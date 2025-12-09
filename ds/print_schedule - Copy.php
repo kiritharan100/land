@@ -22,20 +22,19 @@ if (isset($_GET['token'])) {
 // Get lease details + beneficiary location and contact + land info
 $lease_sql = "SELECT 
                                 l.*,
+                                land.address AS land_address,
+                                land.lcg_area AS land_area,
                                 ben.name AS beneficiary_name,
                                 ben.address AS beneficiary_address,
                                 ben.telephone AS beneficiary_phone,
                                 ben.district AS beneficiary_district,
-                                land.land_address,
-                                land.ds_id,
-                                land.gn_id,
-                                COALESCE(cr.client_name, ben.ds_division_text) AS ds_division_name,
-                                COALESCE(gn.gn_name, ben.gn_division_text) AS gn_division_name
+                                COALESCE(cr.client_name, ben.ds_division_text) AS ds_division,
+                                COALESCE(gn.gn_name, ben.gn_division_text) AS gn_division
                             FROM leases l
+                            LEFT JOIN land_registration land ON l.land_id = land.land_id
                             LEFT JOIN beneficiaries ben ON l.beneficiary_id = ben.ben_id
-                            LEFT JOIN ltl_land_registration land ON l.land_id = land.land_id
-                            LEFT JOIN client_registration cr ON land.ds_id = cr.c_id
-                            LEFT JOIN gn_division gn ON land.gn_id = gn.gn_id
+                            LEFT JOIN client_registration cr ON ben.ds_division_id = cr.c_id
+                            LEFT JOIN gn_division gn ON ben.gn_division_id = gn.gn_id
                             WHERE l.lease_id = ?";
 $stmt = $con->prepare($lease_sql);
 $stmt->bind_param("i", $lease_id);
@@ -154,41 +153,26 @@ $payments = $stmt->get_result();
         margin-bottom: 6px;
     }
 
-    .lease-info {
+    .info-table {
         width: 100%;
+        border: 0;
         border-collapse: collapse;
-        table-layout: fixed;
-        margin: 6px 0 10px;
+        margin: 2px 0 8px 0;
     }
 
-    .lease-info td {
-        border: none;
-        padding: 3px 6px;
+    .info-table td {
+        border: 0;
+        padding: 2px 6px;
         font-size: 10px;
         vertical-align: top;
-        line-height: 1.2;
     }
 
-    .lease-info .field {
-        white-space: normal;
+    .label {
+        color: #333;
     }
 
-    .lease-info .label {
+    .value {
         font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.4px;
-        color: #444;
-        display: inline-block;
-        margin-right: 4px;
-    }
-
-    .lease-info .value {
-        font-weight: 600;
-        color: #000;
-    }
-
-    .lease-info .value span {
-        font-weight: 400;
     }
 
     @media print {
@@ -205,82 +189,66 @@ $payments = $stmt->get_result();
         <button onclick="window.close();" style="padding:6px 10px;">Close</button>
     </div>
 
+    <div class="header">
+        <div>
+            <h1>Lease: <?= htmlspecialchars($lease['lease_number'] ?? '-') ?></h1>
+            <div class="meta">Lessee: <?= htmlspecialchars($lease['beneficiary_name'] ?? '-') ?> &nbsp;|&nbsp; Land:
+                <?= htmlspecialchars($lease['land_address'] ?? '-') ?></div>
+        </div>
+        <div class="meta">
+            <div><strong>Approved Date:</strong> <?= htmlspecialchars($lease['approval_date'] ?? '-') ?></div>
+            <div><strong>Start Date:</strong> <?= htmlspecialchars($lease['start_date'] ?? '-') ?></div>
+        </div>
+    </div>
 
     <?php
         // Prepare compact info rows
-        $valuation_amount = isset($lease['valuation_amount']) && $lease['valuation_amount'] !== ''
-            ? (float)$lease['valuation_amount']
-            : null;
-        $annual_rent_percentage = isset($lease['annual_rent_percentage']) && $lease['annual_rent_percentage'] !== ''
-            ? (float)$lease['annual_rent_percentage']
-            : null;
-        $annual_rent_amount = null;
-        if ($valuation_amount !== null && $annual_rent_percentage !== null) {
-            $annual_rent_amount = $valuation_amount * ($annual_rent_percentage / 100);
-        }
+        $valuation_amount = isset($lease['valuation_amount']) ? (float)$lease['valuation_amount'] : 0.0;
+        $annual_rent_pct = isset($lease['annual_rent_percentage']) ? (float)$lease['annual_rent_percentage'] : 0.0;
         $type_of_project = $lease['type_of_project'] ?? '';
-        $project_name = $lease['name_of_the_project'] ?? '';
-        $lease_status = $lease['lease_status'] ?? $lease['status'] ?? '';
-        $lease_number = $lease['lease_number'] ?? '';
-        $ds_division = $lease['ds_division_name'] ?? '';
-        $gn_division = $lease['gn_division_name'] ?? '';
+        $district = $lease['beneficiary_district'] ?? '';
+        $ds_division = $lease['ds_division'] ?? '';
+        $gn_division = $lease['gn_division'] ?? '';
         $contact = $lease['beneficiary_phone'] ?? '';
-        $lease_holder = $lease['beneficiary_name'] ?? '';
         $ben_address = $lease['beneficiary_address'] ?? '';
         $land_address = $lease['land_address'] ?? '';
-        $approved_date = $lease['approved_date'] ?? '';
-        $lease_start_date = $lease['start_date'] ?? '';
-        $file_no = $lease['file_number'] ?? '';
+        $land_area = isset($lease['land_area']) ? $lease['land_area'] : '';
     ?>
-    <div align='center'>
-        <h3>Lease Schedule</h3>
-    </div>
-    <table class="lease-info">
+
+    <table class="info-table">
         <tr>
-            <td class="field"><span class="label">Lease Number</span><span
-                    class="value"><?= htmlspecialchars($lease['lease_number'] ?? '-') ?></span></td>
-            <td class="field"><span class="label">File No:</span><span class="value">
-                    <?= htmlspecialchars($file_no ?: '-') ?></span></td>
-            <td class="field"><span class="label">Approved Date</span><span
-                    class="value"><?= htmlspecialchars($approved_date ?: '-') ?></span></td>
-            <td class="field"><span class="label">Start Date</span><span
-                    class="value"><?= htmlspecialchars($lease_start_date ?: '-') ?></span></td>
+            <td><span class="label">Approved Date:</span> <span
+                    class="value"><?= htmlspecialchars($lease['approval_date'] ?? '-') ?></span></td>
+            <td><span class="label">Valuation Amount:</span> <span
+                    class="value"><?= $valuation_amount ? number_format($valuation_amount, 2) : '-' ?></span></td>
+            <td><span class="label">Annual Rent %:</span> <span
+                    class="value"><?= $annual_rent_pct ? rtrim(rtrim(number_format($annual_rent_pct, 2), '0'), '.') : '-' ?></span>
+            </td>
         </tr>
         <tr>
-            <td class="field"><span class="label">Lease Holder</span><span
-                    class="value"><?= htmlspecialchars($lease_holder ?: '-') ?></span></td>
-            <td class="field"><span class="label"> </span><span class="value"> </span></td>
-            <td class="field"><span class="label">Contact Number</span><span
-                    class="value"><?= htmlspecialchars($contact ?: '-') ?></span></td>
-            <td class="field"><span class="label">Lessee Address</span><span
+            <td><span class="label">District:</span> <span
+                    class="value"><?= htmlspecialchars($district ?: '-') ?></span></td>
+            <td><span class="label">DS Division:</span> <span
+                    class="value"><?= htmlspecialchars($ds_division ?: '-') ?></span></td>
+            <td><span class="label">GN Division:</span> <span
+                    class="value"><?= htmlspecialchars($gn_division ?: '-') ?></span></td>
+        </tr>
+        <tr>
+            <td><span class="label">Type of Project:</span> <span
+                    class="value"><?= htmlspecialchars($type_of_project ?: '-') ?></span></td>
+            <td><span class="label">Contact:</span> <span class="value"><?= htmlspecialchars($contact ?: '-') ?></span>
+            </td>
+            <td><span class="label">Lessee Address:</span> <span
                     class="value"><?= htmlspecialchars($ben_address ?: '-') ?></span></td>
         </tr>
         <tr>
-            <td class="field"><span class="label">Land Address</span><span
-                    class="value"><?= htmlspecialchars($land_address ?: '-') ?></span></td>
-            <td class="field"><span class="label">Valuation Amount</span><span
-                    class="value"><?= $valuation_amount !== null ? number_format($valuation_amount, 2) : '-' ?></span>
+            <td colspan="3"><span class="label">Land Information:</span> <span
+                    class="value"><?= htmlspecialchars($land_address ?: '-') ?><?= $land_area ? ' | Area: ' . htmlspecialchars($land_area) . ' Ha' : '' ?></span>
             </td>
-            <td class="field"><span class="label">Annual Rent</span><span
-                    class="value"><?= $annual_rent_amount !== null ? number_format($annual_rent_amount, 2) : '-' ?></span>
-            </td>
-            <td class="field"><span class="label">Land DS Division</span><span
-                    class="value"><?= htmlspecialchars($ds_division ?: '-') ?></span></td>
-        </tr>
-        <tr>
-            <td class="field"><span class="label">GN Division</span><span
-                    class="value"><?= htmlspecialchars($gn_division ?: '-') ?></span></td>
-            <td class="field"><span class="label">Type of Project</span><span
-                    class="value"><?= htmlspecialchars($type_of_project ?: '-') ?></span></td>
-            <td class="field"><span class="label">Name of the Project</span><span
-                    class="value"><?= htmlspecialchars($project_name ?: '-') ?></span></td>
-            <td class="field"><span class="label">Lease Status</span><span
-                    class="value"><?= htmlspecialchars($lease_status ?: '-') ?></span></td>
         </tr>
     </table>
 
-    <!-- <h3>Payment Schedule</h3> -->
-    <!-- <hr> -->
+    <h3>Payment Schedule</h3>
     <?php
             // Determine conditional columns like the Schedule tab
             $showPremiumCols = false; $showDiscountCol = false;
@@ -381,14 +349,14 @@ $payments = $stmt->get_result();
     </table>
 
     <h3>Payment History</h3>
-    <table style='width:40%; important;'>
+    <table style='width:50%; important;'>
         <thead>
             <tr>
                 <th>Date</th>
                 <th>Receipt No</th>
                 <th>Amount</th>
 
-
+                <th>Reference</th>
             </tr>
         </thead>
         <tbody>
@@ -398,12 +366,11 @@ $payments = $stmt->get_result();
             </tr>
             <?php else: while ($payment = $payments->fetch_assoc()): ?>
             <tr>
-                <td align='center'><?= htmlspecialchars($payment['payment_date']) ?></tda>
-                <td><?= htmlspecialchars($payment['reference_number']) ?></td>
-
+                <td><?= htmlspecialchars($payment['payment_date']) ?></td>
+                <td><?= htmlspecialchars($payment['receipt_number']) ?></td>
                 <td class="text-right"><?= number_format($payment['amount'], 2) ?></td>
 
-
+                <td><?= htmlspecialchars($payment['reference_number']) ?></td>
             </tr>
             <?php endwhile; endif; ?>
         </tbody>
