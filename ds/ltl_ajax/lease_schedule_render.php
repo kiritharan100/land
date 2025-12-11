@@ -263,8 +263,8 @@ if ($md5 !== '') {
                      <tr class="<?= $rowClass ?>">
                          <td class="text-center"><?= $count++ ?></td>
 
-                         <td><?= htmlspecialchars($schedule['start_date']) ?></td>
-                         <td><?= htmlspecialchars($schedule['end_date']) ?></td>
+                         <td align='center'><?= htmlspecialchars($schedule['start_date']) ?></td>
+                         <td align='center'><?= htmlspecialchars($schedule['end_date']) ?></td>
 
                          <?php if ($showPremiumCols): ?>
                          <td class="text-right">

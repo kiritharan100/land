@@ -252,7 +252,7 @@ if ($md5 !== ''){
                         <label>Revision Period (Years) *</label>
                         <input type="number" class="form-control" id="ltl_revision_period" name="revision_period"
                             required value="<?php echo htmlspecialchars($existing_lease['revision_period'] ?? ''); ?>"
-                            <?php echo $existing_lease ? 'readonly ' : ''; ?> />
+                            readonly />
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -261,7 +261,7 @@ if ($md5 !== ''){
                         <input type="number" step="0.01" class="form-control" id="ltl_revision_percentage"
                             name="revision_percentage" required
                             value="<?php echo htmlspecialchars($existing_lease['revision_percentage'] ?? ''); ?>"
-                            <?php echo $existing_lease ? 'readonly ' : ''; ?> />
+                            readonly />
                     </div>
                 </div>
                 <div class="col-md-3">
@@ -278,8 +278,7 @@ if ($md5 !== ''){
                         <label>Penalty Rate (%)</label>
                         <input type="number" min="0" max="100" step="0.01" class="form-control" id="ltl_penalty_rate"
                             name="penalty_rate" placeholder="e.g. 10.00"
-                            value="<?php echo htmlspecialchars($existing_lease['penalty_rate'] ?? ''); ?>"
-                            <?php echo $existing_lease ? 'readonly ' : ''; ?> />
+                            value="<?php echo htmlspecialchars($existing_lease['penalty_rate'] ?? ''); ?>" readonly />
                     </div>
                 </div>
             </div>

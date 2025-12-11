@@ -46,26 +46,28 @@ try{
   $file_number = isset($_POST['file_number']) && trim($_POST['file_number']) !== '' ? mysqli_real_escape_string($con, $_POST['file_number']) : $lease_number;
 
   // Server-side safeguard: derive effective annual % based on valuation vs economy threshold
-  $effective_pct = $annual_rent_percentage;
-  if ($lease_type_id > 0) {
-    $q = "SELECT base_rent_percent, economy_rate, economy_valuvation FROM lease_master WHERE lease_type_id=$lease_type_id LIMIT 1";
-    if ($rs = mysqli_query($con, $q)) {
-      if ($lm = mysqli_fetch_assoc($rs)) {
-        $base_pct = isset($lm['base_rent_percent']) ? floatval($lm['base_rent_percent']) : 0.0;
-        $eco_rate = isset($lm['economy_rate']) ? floatval($lm['economy_rate']) : 0.0;
-        $eco_val  = isset($lm['economy_valuvation']) ? floatval($lm['economy_valuvation']) : 0.0;
-        if ($valuation_amount > 0 && $eco_val > 0 && $eco_rate > 0 && $valuation_amount <= $eco_val) {
-          $effective_pct = $eco_rate;
-        } else {
-          $effective_pct = $base_pct > 0 ? $base_pct : $annual_rent_percentage;
-        }
-      }
-      mysqli_free_result($rs);
-    }
-  }
 
-  // Use the server-determined percentage for rent and persistence
-  $annual_rent_percentage = $effective_pct;
+
+  // $effective_pct = $annual_rent_percentage;
+  // if ($lease_type_id > 0) {
+  //   $q = "SELECT base_rent_percent, economy_rate, economy_valuvation FROM lease_master WHERE lease_type_id=$lease_type_id LIMIT 1";
+  //   if ($rs = mysqli_query($con, $q)) {
+  //     if ($lm = mysqli_fetch_assoc($rs)) {
+  //       $base_pct = isset($lm['base_rent_percent']) ? floatval($lm['base_rent_percent']) : 0.0;
+  //       $eco_rate = isset($lm['economy_rate']) ? floatval($lm['economy_rate']) : 0.0;
+  //       $eco_val  = isset($lm['economy_valuvation']) ? floatval($lm['economy_valuvation']) : 0.0;
+  //       if ($valuation_amount > 0 && $eco_val > 0 && $eco_rate > 0 && $valuation_amount <= $eco_val) {
+  //         $effective_pct = $eco_rate;
+  //       } else {
+  //         $effective_pct = $base_pct > 0 ? $base_pct : $annual_rent_percentage;
+  //       }
+  //     }
+  //     mysqli_free_result($rs);
+  //   }
+  // }
+  // $annual_rent_percentage = $effective_pct;
+
+
   $initial_annual_rent = $valuation_amount * ($annual_rent_percentage / 100.0);
   $premium = 0.0;
   if (!empty($start_date) && strtotime($start_date) < strtotime('2020-01-01')) {

@@ -25,7 +25,7 @@ try{
         }
     }
 
-    // ----------------------------------------------------
+    // -----------------------------------------------------
     // Incoming IDs
     // ----------------------------------------------------
     $lease_id        = isset($_POST['lease_id']) ? (int)$_POST['lease_id'] : 0;
@@ -152,25 +152,30 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
     // ----------------------------------------------------
     // Compute effective percentage (economy vs base)
     // ----------------------------------------------------
-    $effective_pct = $annual_rent_percentage;
-    if ($lease_type_id > 0) {
-        $q = "SELECT base_rent_percent, economy_rate, economy_valuvation 
-              FROM lease_master WHERE lease_type_id=$lease_type_id LIMIT 1";
-        if ($rs = mysqli_query($con, $q)) {
-            if ($lm = mysqli_fetch_assoc($rs)) {
-                $base_pct = isset($lm['base_rent_percent']) ? floatval($lm['base_rent_percent']) : 0.0;
-                $eco_rate = isset($lm['economy_rate']) ? floatval($lm['economy_rate']) : 0.0;
-                $eco_val  = isset($lm['economy_valuvation']) ? floatval($lm['economy_valuvation']) : 0.0;
-                if ($valuation_amount > 0 && $eco_val > 0 && $eco_rate > 0 && $valuation_amount <= $eco_val) {
-                    $effective_pct = $eco_rate;
-                } else {
-                    $effective_pct = $base_pct > 0 ? $base_pct : $annual_rent_percentage;
-                }
-            }
-            mysqli_free_result($rs);
-        }
-    }
-    $annual_rent_percentage = $effective_pct;
+    
+
+//    $effective_pct = $annual_rent_percentage; 
+    // if ($lease_type_id > 0) {
+    //     $q = "SELECT base_rent_percent, economy_rate, economy_valuvation 
+    //           FROM lease_master WHERE lease_type_id=$lease_type_id LIMIT 1";
+    //     if ($rs = mysqli_query($con, $q)) {
+    //         if ($lm = mysqli_fetch_assoc($rs)) {
+    //             $base_pct = isset($lm['base_rent_percent']) ? floatval($lm['base_rent_percent']) : 0.0;
+    //             $eco_rate = isset($lm['economy_rate']) ? floatval($lm['economy_rate']) : 0.0;
+    //             $eco_val  = isset($lm['economy_valuvation']) ? floatval($lm['economy_valuvation']) : 0.0;
+    //             if ($valuation_amount > 0 && $eco_val > 0 && $eco_rate > 0 && $valuation_amount <= $eco_val) {
+    //                 $effective_pct = $eco_rate;
+    //             } else {
+    //                 $effective_pct = $base_pct > 0 ? $base_pct : $annual_rent_percentage;
+    //             }
+    //         }
+    //         mysqli_free_result($rs);
+    //     }
+    // }
+    // $annual_rent_percentage = $effective_pct;
+
+
+
 
     $uid = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
 
