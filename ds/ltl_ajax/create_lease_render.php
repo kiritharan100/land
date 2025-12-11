@@ -100,7 +100,7 @@ if ($md5 !== ''){
                     <div class="form-group">
                         <label>File Number <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="ltl_file_number" name="file_number" required
-                            value="<?php echo htmlspecialchars($existing_lease['file_number'] ?? 'DS/'.$client_prefix."/LS/"); ?>"
+                            value="<?php echo htmlspecialchars($existing_lease['file_number'] ??  'Generate'); ?>"
                             <?php echo $existing_lease ? 'readonly ' : ''; ?> />
                     </div>
                 </div>
@@ -382,3 +382,18 @@ if ($md5 !== ''){
     }
 })();
 </script>
+<?php if (!$existing_lease): ?>
+<script>
+$(document).ready(function() {
+    $.ajax({
+        url: "ajax/get_last_file_number.php", // your PHP file
+        method: "GET",
+        success: function(prefix) {
+            // Set the value to the input box
+            $("#ltl_file_number").val(prefix);
+        }
+    });
+
+});
+</script>
+<?php endif; ?>
