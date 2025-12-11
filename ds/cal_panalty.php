@@ -81,7 +81,7 @@ $lease_id = isset($_REQUEST['lease_id']) ? intval($_REQUEST['lease_id']) : null;
                     $cumulative_outstanding = 0;
                     $penalty_year = 0;
                     
-                   echo  $scheduleQuery = "
+echo  $scheduleQuery = "
     SELECT 
         ls.schedule_id,
         ls.start_date,
@@ -94,10 +94,15 @@ $lease_id = isset($_REQUEST['lease_id']) ? intval($_REQUEST['lease_id']) : null;
         IFNULL(SUM(lp.rent_paid), 0) AS rent_paid,
         IFNULL(SUM(lp.panalty_paid), 0) AS panalty_paid,
         IFNULL(SUM(lp.premium_paid), 0) AS premium_paid,
-        IFNULL(SUM(lp.discount_apply), 0) AS discount_apply
+        IFNULL(SUM(lp.discount_apply), 0) AS discount_apply,
+        IFNULL(SUM(w.write_off_amount), 0) AS write_off_amount
+
     FROM lease_schedules ls
     LEFT JOIN lease_payments lp 
         ON ls.schedule_id = lp.schedule_id and lp.status = 1
+
+     LEFT JOIN ltl_write_off w
+        ON ls.schedule_id = w.schedule_id AND w.status = 1
 
     WHERE ls.lease_id = '$lease_id'
       AND DATE_ADD(ls.start_date, INTERVAL 30 DAY) < '$today'
@@ -126,17 +131,18 @@ $lease_id = isset($_REQUEST['lease_id']) ? intval($_REQUEST['lease_id']) : null;
                             echo '<td style="text-align:right;">' . number_format($schedule['rent_paid'], 2) . '</td>';
                             echo '<td style="text-align:right;">' . number_format($cumulative_outstanding, 2) . '</td>';
                             
-                                    if( $schedule['end_date'] > $valuation_date  ){ echo "<td>Y</td>";  } else { echo "<td></td>"; }
+                                    if( $schedule['end_date'] > $valuation_date  ){ echo "<td>Y-".$schedule['write_off_amount']."</td>";  } else { echo "<td></td>"; }
 
 
-                            echo '<td style="text-align:right;">' . number_format($schedule['panalty'], 2) . '</td>';
+                            
 
 
                             if( $schedule['end_date'] > $valuation_date  ){   
                                 echo "<td>$penalty_year</td>";
                                 if ($penalty_year > 0) {
+                                    $write_off_amount = $schedule['write_off_amount'];
+                                    $penalty_amount = ($cumulative_outstanding_last_schedule * ($penalty_rate / 100))-$write_off_amount;
                                     
-                                    $penalty_amount = ($cumulative_outstanding_last_schedule * ($penalty_rate / 100));
                              
                                 $updatePenaltyQuery = "
                                     UPDATE lease_schedules
@@ -146,12 +152,10 @@ $lease_id = isset($_REQUEST['lease_id']) ? intval($_REQUEST['lease_id']) : null;
                                     WHERE schedule_id = '" . $schedule['schedule_id'] . "'  
                                 ";
                                 mysqli_query($con, $updatePenaltyQuery);    
-
-                                echo "updated_penalty: $penalty_amount";
-                                    
                                 }
                                 $penalty_year ++;
                              } 
+                             echo '<td style="text-align:right;">' . number_format($penalty_amount, 2) . '</td>';
                              
                             
                            

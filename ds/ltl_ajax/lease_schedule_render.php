@@ -83,51 +83,52 @@ if ($md5 !== '') {
 }
 
 ?>
-<style>
+ <style>
 /* GREEN ROW FOR CURRENT SCHEDULE */
 .current-schedule {
-    background:#28a745 !important;
-    color:white !important;
-    font-weight:bold;
+    background: #28a745 !important;
+    color: white !important;
+    font-weight: bold;
 }
-.current-schedule td {
-    color:white !important;
-}
-</style>
 
-<div class="card">
-  <div class="card-header d-flex justify-content-between align-items-center">
-    <h5 class="card-header-text mb-0">Lease Payment Schedule</h5>
-    <div>
-      <?php if ($lease): 
+.current-schedule td {
+    color: white !important;
+}
+ </style>
+
+ <div class="card">
+     <div class="card-header d-flex justify-content-between align-items-center">
+         <h5 class="card-header-text mb-0">Lease Payment Schedule</h5>
+         <div>
+             <?php if ($lease): 
            $token = function_exists('encrypt_id') 
                     ? encrypt_id($lease['lease_id']) 
                     : $lease['lease_id']; ?>
-        <a class="btn btn-outline-primary btn-sm" 
-           href="print_schedule.php?token=<?= urlencode($token) ?>" 
-           target="_blank">
-          <i class="fa fa-print"></i> Print Schedule
-        </a>
-        <button type='button' class='btn btn-info btn-sm' id='ltl-regenerate-penalty-btn' data-lease-id='<?= (int)($lease['lease_id'] ?? 0) ?>'> Regenerate Penalty </button>
-      <?php endif; ?>
-    </div>
-  </div>
+             <a class="btn btn-outline-primary btn-sm" href="print_schedule.php?token=<?= urlencode($token) ?>"
+                 target="_blank">
+                 <i class="fa fa-print"></i> Print Schedule
+             </a>
+             <button type='button' class='btn btn-info btn-sm' id='ltl-regenerate-penalty-btn'
+                 data-lease-id='<?= (int)($lease['lease_id'] ?? 0) ?>'> Regenerate Penalty </button>
+             <?php endif; ?>
+         </div>
+     </div>
 
-  <div class="card-block" style="padding: 1rem;">
+     <div class="card-block" style="padding: 1rem;">
 
-    <?php if ($error): ?>
-      <div class="alert alert-warning mb-0"><?= htmlspecialchars($error) ?></div>
+         <?php if ($error): ?>
+         <div class="alert alert-warning mb-0"><?= htmlspecialchars($error) ?></div>
 
-    <?php else: ?>
+         <?php else: ?>
 
-      <div class="row mb-2">
-        <div class="col-sm-12">
-          <strong>Lease:</strong> <?= htmlspecialchars($lease['lease_number']) ?> |
-          <strong>Lessee:</strong> <?= htmlspecialchars($ben['name']) ?> |
-          <strong>Land:</strong> <?= htmlspecialchars($land['land_address']) ?><br>
-          <strong>Start:</strong> <?= htmlspecialchars($lease['start_date']) ?> |
-          <strong>End:</strong> <?= htmlspecialchars($lease['end_date']) ?>
-          <?php
+         <div class="row mb-2">
+             <div class="col-sm-12">
+                 <strong>Lease:</strong> <?= htmlspecialchars($lease['lease_number']) ?> |
+                 <strong>Lessee:</strong> <?= htmlspecialchars($ben['name']) ?> |
+                 <strong>Land:</strong> <?= htmlspecialchars($land['land_address']) ?><br>
+                 <strong>Start:</strong> <?= htmlspecialchars($lease['start_date']) ?> |
+                 <strong>End:</strong> <?= htmlspecialchars($lease['end_date']) ?>
+                 <?php
             // Compute current year lease schedule start date (earliest schedule start in current year)
             $currentYearStart = '';
             $currentYear = date('Y');
@@ -142,10 +143,10 @@ if ($md5 !== '') {
               echo '| <strong>Current Year Start:</strong> ' . htmlspecialchars($currentYearStart);
             }
           ?>
-        </div>
-      </div>
+             </div>
+         </div>
 
-      <?php
+         <?php
       // Load schedules
       $schedules = [];
       if ($stS = mysqli_prepare($con, 'SELECT * FROM lease_schedules WHERE lease_id=? ORDER BY schedule_year')) {
@@ -170,42 +171,44 @@ if ($md5 !== '') {
       $colspan = 12 + ($showPremiumCols ? 3 : 0) + ($showDiscountCol ? 1 : 0);
       ?>
 
-      <div class="table-responsive">
-      <table class="table table-bordered table-sm">
-      <thead class="bg-light">
-        <tr>
-          <th>#</th>
-          <th>Start</th>
-          <th>End</th>
+         <div class="table-responsive">
+             <table class="table table-bordered table-sm">
+                 <thead class="bg-light">
+                     <tr>
+                         <th>#</th>
+                         <th>Start</th>
+                         <th>End</th>
 
-          <?php if ($showPremiumCols): ?>
-          <th>Premium</th>
-          <th>Premium Paid</th>
-          <th>Premium Bal</th>
-          <?php endif; ?>
+                         <?php if ($showPremiumCols): ?>
+                         <th>Premium</th>
+                         <th>Premium Paid</th>
+                         <th>Premium Bal</th>
+                         <?php endif; ?>
 
-          <th>Annual Lease</th>
-          <th>Paid Rent</th>
+                         <th>Annual Lease</th>
+                         <th>Paid Rent</th>
 
-          <?php if ($showDiscountCol): ?>
-          <th>Discount</th>
-          <?php endif; ?>
+                         <?php if ($showDiscountCol): ?>
+                         <th>Discount</th>
+                         <?php endif; ?>
 
-          <th>Rent Bal</th>
-          <th>Penalty</th>
-          <th>Penalty Paid</th>
-          <th>Penalty Bal</th>
-          <th>Total Paid</th>
-          <th>Total Outst</th>
-          <th>Status</th>
-        </tr>
-      </thead>
+                         <th>Rent Bal</th>
+                         <th>Penalty</th>
+                         <th>Penalty Paid</th>
+                         <th>Penalty Bal</th>
+                         <th>Total Paid</th>
+                         <th>Total Outst</th>
+                         <th>Status</th>
+                     </tr>
+                 </thead>
 
-      <tbody>
-      <?php if (!$schedules): ?>
-        <tr><td colspan="<?= $colspan ?>" class="text-center">No schedules found</td></tr>
+                 <tbody>
+                     <?php if (!$schedules): ?>
+                     <tr>
+                         <td colspan="<?= $colspan ?>" class="text-center">No schedules found</td>
+                     </tr>
 
-      <?php else: foreach ($schedules as $schedule):
+                     <?php else: foreach ($schedules as $schedule):
 
           // Calculate running balances
           $paid_rent = (float)$schedule['paid_rent'];
@@ -257,269 +260,437 @@ if ($md5 !== '') {
           }
       ?>
 
-      <tr class="<?= $rowClass ?>">
-        <td class="text-center"><?= $count++ ?></td>
+                     <tr class="<?= $rowClass ?>">
+                         <td class="text-center"><?= $count++ ?></td>
 
-        <td><?= htmlspecialchars($schedule['start_date']) ?></td>
-        <td><?= htmlspecialchars($schedule['end_date']) ?></td>
+                         <td><?= htmlspecialchars($schedule['start_date']) ?></td>
+                         <td><?= htmlspecialchars($schedule['end_date']) ?></td>
 
-        <?php if ($showPremiumCols): ?>
-        <td class="text-right">
-          <?php // Make premium amount clickable for edit when permission 8
+                         <?php if ($showPremiumCols): ?>
+                         <td class="text-right">
+                             <?php // Make premium amount clickable for edit when permission 8
           if ($canWriteOff && $premium > 0):
             $schedule_id = (int)($schedule['schedule_id'] ?? 0);
             $lease_id = isset($lease['lease_id']) ? (int)$lease['lease_id'] : 0;
           ?>
-            <span class="premium-edit" data-schedule-id="<?= $schedule_id ?>" data-lease-id="<?= $lease_id ?>" data-current-premium="<?= number_format($premium,2,'.','') ?>" style="cursor:pointer; text-decoration:underline;">
-              <?= number_format($premium,2) ?>
-            </span>
-          <?php else: ?>
-              <?= number_format($premium,2) ?>
-          <?php endif; ?>
-        </td>
-        <td class="text-right"><?= number_format($premium_paid,2) ?></td>
-        <td class="text-right"><?= number_format($prev_premium_balance,2) ?></td>
-        <?php endif; ?>
+                             <span class="premium-edit" data-schedule-id="<?= $schedule_id ?>"
+                                 data-lease-id="<?= $lease_id ?>"
+                                 data-current-premium="<?= number_format($premium,2,'.','') ?>"
+                                 style="cursor:pointer; text-decoration:underline;">
+                                 <?= number_format($premium,2) ?>
+                             </span>
+                             <?php else: ?>
+                             <?= number_format($premium,2) ?>
+                             <?php endif; ?>
+                         </td>
+                         <td class="text-right"><?= number_format($premium_paid,2) ?></td>
+                         <td class="text-right"><?= number_format($prev_premium_balance,2) ?></td>
+                         <?php endif; ?>
 
-        <td class="text-right"><?= number_format($annual,2) ?></td>
-        <td class="text-right"><?= number_format($paid_rent,2) ?></td>
+                         <td class="text-right"><?= number_format($annual,2) ?></td>
+                         <td class="text-right"><?= number_format($paid_rent,2) ?></td>
 
-        <?php if ($showDiscountCol): ?>
-        <td class="text-right"><?= number_format($discount,2) ?></td>
-        <?php endif; ?>
+                         <?php if ($showDiscountCol): ?>
+                         <td class="text-right"><?= number_format($discount,2) ?></td>
+                         <?php endif; ?>
 
-        <td class="text-right"><?= number_format($balance_rent,2) ?></td>
+                         <td class="text-right"><?= number_format($balance_rent,2) ?></td>
 
-        <td class="text-right">
-          <?php if ($canWriteOff && $penalty > 0): ?>
-            <?php
-              $schedule_id = (int)($schedule['schedule_id'] ?? 0);
-              $lease_id = isset($lease['lease_id']) ? (int)$lease['lease_id'] : 0;
-              $penalty_due = max(0, (float)$penalty - (float)$penalty_paid);
-            ?>
-            <span class="badge writeoff-badge"
-                  id="<?= $schedule_id ?>"
-                  data-schedule-id="<?= $schedule_id ?>"
-                  data-lease-id="<?= $lease_id ?>"
-                  data-default-amount="<?= number_format($penalty_due, 2, '.', '') ?>"
-                  style="background:#006400;color:white; cursor:pointer;">W</span>
-          <?php endif; ?>
-          <span class="penalty-amount" data-schedule-id="<?= (int)($schedule['schedule_id'] ?? 0) ?>"><?= number_format($penalty,2) ?></span>
-        </td>
-        <td class="text-right"><?= number_format($penalty_paid,2) ?></td>
-        <td class="text-right"><?= number_format($balance_penalty,2) ?></td>
+                         <td class="text-right">
+                             <?php if ($canWriteOff && $penalty > 0): ?>
+                             <?php
+                                  $schedule_id = (int)($schedule['schedule_id'] ?? 0);
+                                  $lease_id = isset($lease['lease_id']) ? (int)$lease['lease_id'] : 0;
+                                  $penalty_due = max(0, (float)$penalty - (float)$penalty_paid);
+                                  if($penalty_due > 0){
+                                ?>
 
-        <td class="text-right"><?= number_format($total_payment,2) ?></td>
-        <td class="text-right"><?= number_format($total_outstanding,2) ?></td>
+                             <span class="badge writeoff-badge" id="<?= $schedule_id ?>"
+                                 data-schedule-id="<?= $schedule_id ?>" data-lease-id="<?= $lease_id ?>"
+                                 data-default-amount="<?= number_format($penalty_due, 2, '.', '') ?>"
+                                 style="background:#006400;color:white; cursor:pointer;">W
+                             </span>
 
-        <td class="text-center"><?= $status1 ?></td>
-      </tr>
 
-      <?php endforeach; endif; ?>
-      </tbody>
-      </table>
-      </div>
 
-    <?php endif; ?>
+                             <?php } endif; ?>
+                             <span class="penalty-amount"
+                                 data-schedule-id="<?= (int)($schedule['schedule_id'] ?? 0) ?>"><?= number_format($penalty,2) ?></span>
+                         </td>
+                         <td class="text-right"><?= number_format($penalty_paid,2) ?></td>
+                         <td class="text-right"><?= number_format($balance_penalty,2) ?></td>
 
-  </div>
-</div>
+                         <td class="text-right"><?= number_format($total_payment,2) ?></td>
+                         <td class="text-right"><?= number_format($total_outstanding,2) ?></td>
 
-<script>
+                         <td class="text-center"><?= $status1 ?></td>
+                     </tr>
+
+                     <?php endforeach; endif; ?>
+                 </tbody>
+             </table>
+         </div>
+
+         <?php endif; ?>
+
+     </div>
+ </div>
+
+ <script>
 // Click handler for Write-off badge; only present when user has permission 8
-(function(){
-  try {
-    document.addEventListener('click', function(ev){
-      var el = ev.target.closest && ev.target.closest('.writeoff-badge');
-      if (!el) return;
-      var sid = el.getAttribute('data-schedule-id') || el.id || '';
-      var lid = el.getAttribute('data-lease-id') || '';
-      var defAmt = el.getAttribute('data-default-amount') || '0.00';
-      if (typeof Swal !== 'undefined' && Swal && Swal.fire) {
-        Swal.fire({
-          icon: 'question',
-          title: 'Write off Penalty?',
-          html: 'Lease ID: <b>' + String(lid) + '</b><br>Schedule ID: <b>' + String(sid) + '</b><br><br>' +
-                '<div style="text-align:left">Amount to write off</div>' +
-                '<input id="swal-writeoff-amount" type="number" step="0.01" min="0" class="swal2-input" style="width: 80%;" value="' + String(defAmt) + '">',
-          focusConfirm: false,
-          showCancelButton: true,
-          confirmButtonText: 'Submit',
-          cancelButtonText: 'Cancel',
-          preConfirm: function(){
-            var v = document.getElementById('swal-writeoff-amount').value;
-            var num = parseFloat(v);
-            if (!(num >= 0)) {
-              Swal.showValidationMessage('Please enter a valid amount');
-              return false;
+(function() {
+    try {
+        document.addEventListener('click', function(ev) {
+            var el = ev.target.closest && ev.target.closest('.writeoff-badge');
+            if (!el) return;
+            var sid = el.getAttribute('data-schedule-id') || el.id || '';
+            var lid = el.getAttribute('data-lease-id') || '';
+            var defAmt = el.getAttribute('data-default-amount') || '0.00';
+            if (typeof Swal !== 'undefined' && Swal && Swal.fire) {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Write off Penalty?',
+                    html: 'Lease ID: <b>' + String(lid) + '</b><br>Schedule ID: <b>' + String(sid) +
+                        '</b><br><br>' +
+                        '<div style="text-align:left">Amount to write off</div>' +
+                        '<input id="swal-writeoff-amount" type="number" step="0.01" min="0" class="swal2-input" style="width: 80%;" value="' +
+                        String(defAmt) + '">',
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: 'Submit',
+                    cancelButtonText: 'Cancel',
+                    preConfirm: function() {
+                        var v = document.getElementById('swal-writeoff-amount').value;
+                        var num = parseFloat(v);
+                        if (!(num >= 0)) {
+                            Swal.showValidationMessage('Please enter a valid amount');
+                            return false;
+                        }
+                        return {
+                            amount: num
+                        };
+                    }
+                }).then(function(result) {
+                    if (result && result.isConfirmed) {
+                        var amt = result.value && result.value.amount !== undefined ? result.value
+                            .amount : parseFloat(defAmt);
+                        fetch('ltl_ajax/write_off_penalty.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: new URLSearchParams({
+                                    lease_id: lid,
+                                    schedule_id: sid,
+                                    amount: amt.toFixed(2)
+                                }).toString()
+                            })
+                            .then(r => r.json())
+                            .then(resp => {
+                                if (resp && resp.success) {
+                                    // Update displayed penalty value
+                                    var span = document.querySelector(
+                                        '.penalty-amount[data-schedule-id="' + sid + '"]');
+                                    if (span) {
+                                        span.textContent = (resp.new_panalty !== undefined ?
+                                            parseFloat(resp.new_panalty).toFixed(2) : (
+                                                parseFloat(span.textContent.replace(/,/g,
+                                                    '')) - amt).toFixed(2));
+                                    }
+                                    // Update default amount on badge (new outstanding)
+                                    var newOutstanding = resp.outstanding !== undefined ?
+                                        parseFloat(resp.outstanding).toFixed(2) : '0.00';
+                                    el.setAttribute('data-default-amount', newOutstanding);
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Saved',
+                                        text: 'Penalty write-off recorded.'
+                                    });
+                                    try {
+                                        document.dispatchEvent(new CustomEvent(
+                                            'ltl:schedule-updated', {
+                                                detail: {
+                                                    leaseId: lid,
+                                                    scheduleId: sid,
+                                                    type: 'penalty'
+                                                }
+                                            }));
+                                    } catch (e) {}
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Failed',
+                                        text: (resp && resp.message) || 'Update failed'
+                                    });
+                                }
+                            })
+                            .catch((e) => Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Network error: ' + (e && e.message ? e.message :
+                                    'request failed')
+                            }));
+                    }
+                });
+            } else {
+                var amt = prompt('Lease ID: ' + String(lid) + '\nSchedule ID: ' + String(sid) +
+                    '\nEnter amount to write off:', String(defAmt));
+                if (amt !== null) {
+                    var num = parseFloat(amt);
+                    if (num >= 0) {
+                        fetch('ltl_ajax/write_off_penalty.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: new URLSearchParams({
+                                    lease_id: lid,
+                                    schedule_id: sid,
+                                    amount: num.toFixed(2)
+                                }).toString()
+                            })
+                            .then(r => r.json())
+                            .then(resp => {
+                                if (resp && resp.success) {
+                                    var span = document.querySelector(
+                                        '.penalty-amount[data-schedule-id="' + sid + '"]');
+                                    if (span) {
+                                        span.textContent = (resp.new_panalty !== undefined ? parseFloat(
+                                            resp.new_panalty).toFixed(2) : (parseFloat(span
+                                            .textContent.replace(/,/g, '')) - num).toFixed(2));
+                                    }
+                                    var newOutstanding = resp.outstanding !== undefined ? parseFloat(
+                                        resp.outstanding).toFixed(2) : '0.00';
+                                    el.setAttribute('data-default-amount', newOutstanding);
+                                    alert('Penalty write-off recorded.');
+                                    try {
+                                        document.dispatchEvent(new CustomEvent('ltl:schedule-updated', {
+                                            detail: {
+                                                leaseId: lid,
+                                                scheduleId: sid,
+                                                type: 'penalty'
+                                            }
+                                        }));
+                                    } catch (e) {}
+                                } else {
+                                    alert('Update failed: ' + ((resp && resp.message) ||
+                                        'Unknown error'));
+                                }
+                            })
+                            .catch((e) => alert('Network error: ' + (e && e.message ? e.message :
+                                'request failed')));
+                    }
+                }
             }
-            return { amount: num };
-          }
-        }).then(function(result){
-          if (result && result.isConfirmed) {
-            var amt = result.value && result.value.amount !== undefined ? result.value.amount : parseFloat(defAmt);
-            fetch('ltl_ajax/write_off_penalty.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({ lease_id: lid, schedule_id: sid, amount: amt.toFixed(2) }).toString()
-            })
-            .then(r => r.json())
-            .then(resp => {
-              if (resp && resp.success) {
-                // Update displayed penalty value
-                var span = document.querySelector('.penalty-amount[data-schedule-id="' + sid + '"]');
-                if (span) { span.textContent = (resp.new_panalty !== undefined ? parseFloat(resp.new_panalty).toFixed(2) : (parseFloat(span.textContent.replace(/,/g,'')) - amt).toFixed(2)); }
-                // Update default amount on badge (new outstanding)
-                var newOutstanding = resp.outstanding !== undefined ? parseFloat(resp.outstanding).toFixed(2) : '0.00';
-                el.setAttribute('data-default-amount', newOutstanding);
-                Swal.fire({ icon: 'success', title: 'Saved', text: 'Penalty write-off recorded.' });
-                try { document.dispatchEvent(new CustomEvent('ltl:schedule-updated', { detail: { leaseId: lid, scheduleId: sid, type: 'penalty' } })); } catch(e) {}
-              } else {
-                Swal.fire({ icon: 'error', title: 'Failed', text: (resp && resp.message) || 'Update failed' });
-              }
-            })
-            .catch((e) => Swal.fire({ icon: 'error', title: 'Error', text: 'Network error: ' + (e && e.message ? e.message : 'request failed') }));
-          }
         });
-      } else {
-        var amt = prompt('Lease ID: ' + String(lid) + '\nSchedule ID: ' + String(sid) + '\nEnter amount to write off:', String(defAmt));
-        if (amt !== null) {
-          var num = parseFloat(amt);
-          if (num >= 0) {
-            fetch('ltl_ajax/write_off_penalty.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({ lease_id: lid, schedule_id: sid, amount: num.toFixed(2) }).toString()
-            })
-            .then(r => r.json())
-            .then(resp => {
-              if (resp && resp.success) {
-                var span = document.querySelector('.penalty-amount[data-schedule-id="' + sid + '"]');
-                if (span) { span.textContent = (resp.new_panalty !== undefined ? parseFloat(resp.new_panalty).toFixed(2) : (parseFloat(span.textContent.replace(/,/g,'')) - num).toFixed(2)); }
-                var newOutstanding = resp.outstanding !== undefined ? parseFloat(resp.outstanding).toFixed(2) : '0.00';
-                el.setAttribute('data-default-amount', newOutstanding);
-                alert('Penalty write-off recorded.');
-                try { document.dispatchEvent(new CustomEvent('ltl:schedule-updated', { detail: { leaseId: lid, scheduleId: sid, type: 'penalty' } })); } catch(e) {}
-              } else {
-                alert('Update failed: ' + ((resp && resp.message) || 'Unknown error'));
-              }
-            })
-            .catch((e) => alert('Network error: ' + (e && e.message ? e.message : 'request failed')));
-          }
-        }
-      }
-    });
-  } catch(e) { /* silent */ }
+    } catch (e) {
+        /* silent */
+    }
 })();
-</script>
-<script>
+ </script>
+ <script>
 // Premium edit handler (similar to penalty write-off), gated by permission 8
-(function(){
-  try {
-    document.addEventListener('click', function(ev){
-      var pEl = ev.target.closest && ev.target.closest('.premium-edit');
-      if (!pEl) return;
-      var sid = pEl.getAttribute('data-schedule-id') || '';
-      var lid = pEl.getAttribute('data-lease-id') || '';
-      var cur = pEl.getAttribute('data-current-premium') || '0.00';
-      if (typeof Swal !== 'undefined' && Swal && Swal.fire) {
-        Swal.fire({
-          icon: 'question',
-          title: 'Edit Premium Amount',
-          html: 'Lease ID: <b>' + String(lid) + '</b><br>Schedule ID: <b>' + String(sid) + '</b><br><br>' +
-                '<div style="text-align:left">Enter the premium amount and save which you want to edit</div>' +
-                '<input id="swal-premium-amount" type="number" step="0.01" min="0" class="swal2-input" style="width: 80%;" value="' + String(cur) + '">',
-          showCancelButton: true,
-          confirmButtonText: 'Save',
-          cancelButtonText: 'Cancel',
-          preConfirm: function(){
-            var v = document.getElementById('swal-premium-amount').value;
-            var num = parseFloat(v);
-            if (!(num >= 0)) { Swal.showValidationMessage('Enter valid premium'); return false; }
-            return { amount: num };
-          }
-        }).then(function(result){
-          if (result && result.isConfirmed) {
-            var amt = result.value && result.value.amount !== undefined ? result.value.amount : parseFloat(cur);
-            // Dispatch custom event for future persistence logic
-            // Persist change via AJAX
-            fetch('ltl_ajax/update_premium.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({ lease_id: lid, schedule_id: sid, amount: amt.toFixed(2) }).toString()
-            })
-              .then(r => r.json())
-              .then(resp => {
-                if (resp && resp.success) {
-                  pEl.textContent = (resp.new_amount !== undefined ? parseFloat(resp.new_amount).toFixed(2) : amt.toFixed(2));
-                  pEl.setAttribute('data-current-premium', pEl.textContent);
-                  Swal.fire({ icon: 'success', title: 'Saved', text: 'Premium updated.' });
-                  try { document.dispatchEvent(new CustomEvent('ltl:schedule-updated', { detail: { leaseId: lid, scheduleId: sid, type: 'premium' } })); } catch(e) {}
-                } else {
-                  Swal.fire({ icon: 'error', title: 'Failed', text: (resp && resp.message) || 'Update failed' });
+(function() {
+    try {
+        document.addEventListener('click', function(ev) {
+            var pEl = ev.target.closest && ev.target.closest('.premium-edit');
+            if (!pEl) return;
+            var sid = pEl.getAttribute('data-schedule-id') || '';
+            var lid = pEl.getAttribute('data-lease-id') || '';
+            var cur = pEl.getAttribute('data-current-premium') || '0.00';
+            if (typeof Swal !== 'undefined' && Swal && Swal.fire) {
+                Swal.fire({
+                    icon: 'question',
+                    title: 'Edit Premium Amount',
+                    html: 'Lease ID: <b>' + String(lid) + '</b><br>Schedule ID: <b>' + String(sid) +
+                        '</b><br><br>' +
+                        '<div style="text-align:left">Enter the premium amount and save which you want to edit</div>' +
+                        '<input id="swal-premium-amount" type="number" step="0.01" min="0" class="swal2-input" style="width: 80%;" value="' +
+                        String(cur) + '">',
+                    showCancelButton: true,
+                    confirmButtonText: 'Save',
+                    cancelButtonText: 'Cancel',
+                    preConfirm: function() {
+                        var v = document.getElementById('swal-premium-amount').value;
+                        var num = parseFloat(v);
+                        if (!(num >= 0)) {
+                            Swal.showValidationMessage('Enter valid premium');
+                            return false;
+                        }
+                        return {
+                            amount: num
+                        };
+                    }
+                }).then(function(result) {
+                    if (result && result.isConfirmed) {
+                        var amt = result.value && result.value.amount !== undefined ? result.value
+                            .amount : parseFloat(cur);
+                        // Dispatch custom event for future persistence logic
+                        // Persist change via AJAX
+                        fetch('ltl_ajax/update_premium.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: new URLSearchParams({
+                                    lease_id: lid,
+                                    schedule_id: sid,
+                                    amount: amt.toFixed(2)
+                                }).toString()
+                            })
+                            .then(r => r.json())
+                            .then(resp => {
+                                if (resp && resp.success) {
+                                    pEl.textContent = (resp.new_amount !== undefined ?
+                                        parseFloat(resp.new_amount).toFixed(2) : amt
+                                        .toFixed(2));
+                                    pEl.setAttribute('data-current-premium', pEl.textContent);
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Saved',
+                                        text: 'Premium updated.'
+                                    });
+                                    try {
+                                        document.dispatchEvent(new CustomEvent(
+                                            'ltl:schedule-updated', {
+                                                detail: {
+                                                    leaseId: lid,
+                                                    scheduleId: sid,
+                                                    type: 'premium'
+                                                }
+                                            }));
+                                    } catch (e) {}
+                                } else {
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Failed',
+                                        text: (resp && resp.message) || 'Update failed'
+                                    });
+                                }
+                            })
+                            .catch((e) => Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Network error: ' + (e && e.message ? e.message :
+                                    'request failed')
+                            }));
+                    }
+                });
+            } else {
+                var amt = prompt('Lease ID: ' + String(lid) + '\nSchedule ID: ' + String(sid) +
+                    '\nEnter premium amount:', String(cur));
+                if (amt !== null) {
+                    var num = parseFloat(amt);
+                    if (num >= 0) {
+                        fetch('ltl_ajax/update_premium.php', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/x-www-form-urlencoded'
+                                },
+                                body: new URLSearchParams({
+                                    lease_id: lid,
+                                    schedule_id: sid,
+                                    amount: num.toFixed(2)
+                                }).toString()
+                            })
+                            .then(r => r.json())
+                            .then(resp => {
+                                if (resp && resp.success) {
+                                    pEl.textContent = (resp.new_amount !== undefined ? parseFloat(resp
+                                        .new_amount).toFixed(2) : num.toFixed(2));
+                                    pEl.setAttribute('data-current-premium', pEl.textContent);
+                                    alert('Premium updated.');
+                                    try {
+                                        document.dispatchEvent(new CustomEvent('ltl:schedule-updated', {
+                                            detail: {
+                                                leaseId: lid,
+                                                scheduleId: sid,
+                                                type: 'premium'
+                                            }
+                                        }));
+                                    } catch (e) {}
+                                } else {
+                                    alert('Update failed: ' + ((resp && resp.message) ||
+                                        'Unknown error'));
+                                }
+                            })
+                            .catch((e) => alert('Network error: ' + (e && e.message ? e.message :
+                                'request failed')));
+                    }
                 }
-              })
-              .catch((e) => Swal.fire({ icon: 'error', title: 'Error', text: 'Network error: ' + (e && e.message ? e.message : 'request failed') }));
-          }
+            }
         });
-      } else {
-        var amt = prompt('Lease ID: ' + String(lid) + '\nSchedule ID: ' + String(sid) + '\nEnter premium amount:', String(cur));
-        if (amt !== null) {
-          var num = parseFloat(amt);
-          if (num >= 0) {
-            fetch('ltl_ajax/update_premium.php', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({ lease_id: lid, schedule_id: sid, amount: num.toFixed(2) }).toString()
-            })
-              .then(r => r.json())
-              .then(resp => {
-                if (resp && resp.success) {
-                  pEl.textContent = (resp.new_amount !== undefined ? parseFloat(resp.new_amount).toFixed(2) : num.toFixed(2));
-                  pEl.setAttribute('data-current-premium', pEl.textContent);
-                  alert('Premium updated.');
-                  try { document.dispatchEvent(new CustomEvent('ltl:schedule-updated', { detail: { leaseId: lid, scheduleId: sid, type: 'premium' } })); } catch(e) {}
-                } else {
-                  alert('Update failed: ' + ((resp && resp.message) || 'Unknown error'));
-                }
-              })
-              .catch((e) => alert('Network error: ' + (e && e.message ? e.message : 'request failed')));
-          }
-        }
-      }
-    });
-  } catch(e) { /* silent */ }
+    } catch (e) {
+        /* silent */
+    }
 })();
-</script>
-<script>
+ </script>
+ <script>
 // Regenerate penalty button handler
-(function(){
-  try {
-    var rb = document.getElementById('ltl-regenerate-penalty-btn');
-    if (!rb) return;
-    rb.addEventListener('click', function(){
-      var leaseId = this.getAttribute('data-lease-id') || '';
-      if (!leaseId || leaseId === '0') { if (typeof Swal!=='undefined') Swal.fire('Error','Invalid lease id','error'); else alert('Invalid lease id'); return; }
-      if (typeof Swal !== 'undefined' && Swal.fire) {
-        Swal.fire({ title:'Regenerating penalties', text:'Please wait...', allowOutsideClick:false, didOpen:()=>Swal.showLoading() });
-      }
-      fetch('cal_panalty.php?lease_id=' + encodeURIComponent(leaseId))
-        .then(function(r){ return r.text(); })
-        .then(function(txt){
-          if (typeof Swal !== 'undefined' && Swal.close) Swal.close();
-          if (typeof Swal !== 'undefined' && Swal.fire) {
-            Swal.fire('Done','Penalties regenerated successfully','success').then(function(){
-              try { document.dispatchEvent(new CustomEvent('ltl:schedule-updated', { detail: { leaseId: leaseId, type: 'penalty-regenerated' } })); } catch(e){}
-              try { window.dispatchEvent(new Event('ltl:payments-updated')); } catch(e){}
-            });
-          } else {
-            alert('Penalties regenerated successfully');
-            try { document.dispatchEvent(new CustomEvent('ltl:schedule-updated', { detail: { leaseId: leaseId, type: 'penalty-regenerated' } })); } catch(e){}
-            try { window.dispatchEvent(new Event('ltl:payments-updated')); } catch(e){}
-          }
-        })
-        .catch(function(){ if (typeof Swal !== 'undefined' && Swal.close) Swal.close(); if (typeof Swal !== 'undefined' && Swal.fire) Swal.fire('Error','Failed to regenerate penalties','error'); else alert('Failed to regenerate penalties'); });
-    });
-  } catch(e) { /* silent */ }
+(function() {
+    try {
+        var rb = document.getElementById('ltl-regenerate-penalty-btn');
+        if (!rb) return;
+        rb.addEventListener('click', function() {
+            var leaseId = this.getAttribute('data-lease-id') || '';
+            if (!leaseId || leaseId === '0') {
+                if (typeof Swal !== 'undefined') Swal.fire('Error', 'Invalid lease id', 'error');
+                else alert('Invalid lease id');
+                return;
+            }
+            if (typeof Swal !== 'undefined' && Swal.fire) {
+                Swal.fire({
+                    title: 'Regenerating penalties',
+                    text: 'Please wait...',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+            }
+            fetch('cal_panalty.php?lease_id=' + encodeURIComponent(leaseId))
+                .then(function(r) {
+                    return r.text();
+                })
+                .then(function(txt) {
+                    if (typeof Swal !== 'undefined' && Swal.close) Swal.close();
+                    if (typeof Swal !== 'undefined' && Swal.fire) {
+                        Swal.fire('Done', 'Penalties regenerated successfully', 'success').then(
+                            function() {
+                                try {
+                                    document.dispatchEvent(new CustomEvent('ltl:schedule-updated', {
+                                        detail: {
+                                            leaseId: leaseId,
+                                            type: 'penalty-regenerated'
+                                        }
+                                    }));
+                                } catch (e) {}
+                                try {
+                                    window.dispatchEvent(new Event('ltl:payments-updated'));
+                                } catch (e) {}
+                            });
+                    } else {
+                        alert('Penalties regenerated successfully');
+                        try {
+                            document.dispatchEvent(new CustomEvent('ltl:schedule-updated', {
+                                detail: {
+                                    leaseId: leaseId,
+                                    type: 'penalty-regenerated'
+                                }
+                            }));
+                        } catch (e) {}
+                        try {
+                            window.dispatchEvent(new Event('ltl:payments-updated'));
+                        } catch (e) {}
+                    }
+                })
+                .catch(function() {
+                    if (typeof Swal !== 'undefined' && Swal.close) Swal.close();
+                    if (typeof Swal !== 'undefined' && Swal.fire) Swal.fire('Error',
+                        'Failed to regenerate penalties', 'error');
+                    else alert('Failed to regenerate penalties');
+                });
+        });
+    } catch (e) {
+        /* silent */
+    }
 })();
-</script>
+ </script>
