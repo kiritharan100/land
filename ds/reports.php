@@ -100,6 +100,7 @@
                              <div class="col-md-4 d-flex align-items-end">
                                  <button class="btn btn-primary">Open Report</button>
                              </div>
+
                          </div>
                      </form>
                  </div>
