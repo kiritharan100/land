@@ -209,8 +209,10 @@ if( $lease_location_id == $location_id ) {
                             data-target="#request_letter">Documents</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#create_leases">
                             <?php if($lease_id > 0){ echo "Manage";} else { echo "Create"; } ?> Leases</a>
+                        <a href="#" class="list-group-item list-group-item-action" data-target="#ltl_schedule">Schedule
+                            - Settlement Based</a>
                         <a href="#" class="list-group-item list-group-item-action"
-                            data-target="#ltl_schedule">Schedule</a>
+                            data-target="#ltl_schedule_payment">Schedule - Payment Based</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#payment">Payment</a>
                         <a href="#" class="list-group-item list-group-item-action" data-target="#field_visits">Field
                             Visits</a>
@@ -277,6 +279,16 @@ if( $lease_location_id == $location_id ) {
                         <h5 class="font-weight-bold">Schedule</h5>
                         <hr>
                         <div id="ltl-schedule-container" data-loaded="0">
+                            <div style="text-align:center;padding:16px">
+                                <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="ltl_schedule_payment" class="submenu-section d-none">
+                        <h5 class="font-weight-bold">Schedule - Payment Based</h5>
+                        <hr>
+                        <div id="ltl-schedule-payment-container" data-loaded="0">
                             <div style="text-align:center;padding:16px">
                                 <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />
                             </div>
@@ -596,6 +608,31 @@ if( $lease_location_id == $location_id ) {
                         .catch(function() {
                             sc.innerHTML =
                                 '<div class="text-danger">Failed to load schedule.</div>';
+                        });
+                }
+            }
+            if (target === '#ltl_schedule_payment') {
+                var scp = document.getElementById('ltl-schedule-payment-container');
+                if (scp) {
+                    scp.innerHTML = '<div style="text-align:center;padding:16px">\
+              <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />\
+            </div>';
+                    var urlSP =
+                        'ltl_ajax/lease_schedule_payment_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' +
+                        Date.now();
+                    fetch(urlSP)
+                        .then(function(r) {
+                            return r.text();
+                        })
+                        .then(function(html) {
+                            scp.innerHTML = html;
+                            try {
+                                executeScripts(scp);
+                            } catch (e) {}
+                        })
+                        .catch(function() {
+                            scp.innerHTML =
+                                '<div class="text-danger">Failed to load payment-based schedule.</div>';
                         });
                 }
             }
@@ -939,6 +976,30 @@ if( $lease_location_id == $location_id ) {
                     });
             }
         }
+        if (active.getAttribute('data-target') === '#ltl_schedule_payment') {
+            var scp = document.getElementById('ltl-schedule-payment-container');
+            if (scp) {
+                scp.innerHTML = '<div style="text-align:center;padding:16px">\
+            <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />\
+          </div>';
+                var urlSP =
+                    'ltl_ajax/lease_schedule_payment_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' +
+                    Date.now();
+                fetch(urlSP)
+                    .then(function(r) {
+                        return r.text();
+                    })
+                    .then(function(html) {
+                        scp.innerHTML = html;
+                        try {
+                            executeScripts(scp);
+                        } catch (e) {}
+                    })
+                    .catch(function() {
+                        scp.innerHTML = '<div class="text-danger">Failed to load payment-based schedule.</div>';
+                    });
+            }
+        }
         if (active.getAttribute('data-target') === '#payment') {
             loadPaymentTab();
         }
@@ -991,6 +1052,9 @@ if( $lease_location_id == $location_id ) {
                 var cont = document.getElementById('lease-dashboard-container');
                 if (cont) cont.setAttribute('data-loaded', '0');
             }
+            // mark payment-based schedule stale
+            var scp = document.getElementById('ltl-schedule-payment-container');
+            if (scp) scp.setAttribute('data-loaded', '0');
         });
 
         // When schedule updated (premium edit or penalty write-off), reload schedule tab if visible
@@ -1018,6 +1082,31 @@ if( $lease_location_id == $location_id ) {
             } else {
                 // Mark for reload on next open
                 if (sc) sc.setAttribute('data-loaded', '0');
+            }
+            // Refresh payment-based schedule if visible
+            var scp = document.getElementById('ltl-schedule-payment-container');
+            if (scp && !document.getElementById('ltl_schedule_payment').classList.contains('d-none')) {
+                scp.innerHTML =
+                    '<div style="text-align:center;padding:16px">\n            <img src="../img/Loading_icon.gif" alt="Loading..." style="width:96px;height:auto" />\n          </div>';
+                var urlSP =
+                    'ltl_ajax/lease_schedule_payment_render.php?id=<?php echo htmlspecialchars($md5_ben_id ?? "", ENT_QUOTES); ?>&_ts=' +
+                    Date.now();
+                fetch(urlSP)
+                    .then(function(r) {
+                        return r.text();
+                    })
+                    .then(function(html) {
+                        scp.innerHTML = html;
+                        try {
+                            executeScripts(scp);
+                        } catch (e) {}
+                    })
+                    .catch(function() {
+                        scp.innerHTML =
+                            '<div class="text-danger">Failed to load payment-based schedule.</div>';
+                    });
+            } else {
+                if (scp) scp.setAttribute('data-loaded', '0');
             }
             // Dashboard might need refresh to reflect totals
             if (document.querySelector('#land-dashboard') && !document.querySelector('#land-dashboard')

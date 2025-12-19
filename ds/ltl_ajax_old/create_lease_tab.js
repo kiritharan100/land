@@ -275,9 +275,9 @@
             }
           } catch (e) {}
         } else {
-          // Keep excluded fields readonly, but ensure they are NOT disabled so values post with the form.
+          // keep excluded fields readonly/disabled
           el.setAttribute("readonly", "readonly");
-          el.removeAttribute("disabled");
+          // el.setAttribute("disabled", "disabled");
           try {
             if (window.jQuery && el.tagName === "SELECT" && jQuery.fn.select2)
               jQuery(el).prop("disabled", true).trigger("change.select2");

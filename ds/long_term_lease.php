@@ -16,6 +16,21 @@ if (isset($_GET['order_filter']) && array_key_exists($_GET['order_filter'], $ord
   $selectedOrder = $_COOKIE['ltl_order_filter'];
 }
 
+$remindExpr = "DATE(
+    DATE_ADD(
+        MAKEDATE(YEAR(CURDATE()), 1)
+        + INTERVAL (MONTH(l.start_date) - 1) MONTH
+        + INTERVAL (DAY(l.start_date) - 1) DAY
+        - INTERVAL 1 MONTH,
+        INTERVAL (YEAR(CURDATE()) - YEAR(
+            MAKEDATE(YEAR(CURDATE()), 1)
+            + INTERVAL (MONTH(l.start_date) - 1) MONTH
+            + INTERVAL (DAY(l.start_date) - 1) DAY
+            - INTERVAL 1 MONTH
+        )) YEAR
+    )
+)";
+
 
  ?>
 
@@ -167,20 +182,16 @@ if (isset($_GET['order_filter']) && array_key_exists($_GET['order_filter'], $ord
                         l.lease_id,
                         l.type_of_project,
                         l.lease_number,
- DATE_FORMAT(
-    DATE_ADD(
-        MAKEDATE(YEAR(CURDATE()), 1)
-        + INTERVAL (MONTH(l.start_date) - 1) MONTH
-        + INTERVAL (DAY(l.start_date) - 1) DAY
-        - INTERVAL 1 MONTH,
-        INTERVAL (YEAR(CURDATE()) - YEAR(
-            MAKEDATE(YEAR(CURDATE()), 1)
-            + INTERVAL (MONTH(l.start_date) - 1) MONTH
-            + INTERVAL (DAY(l.start_date) - 1) DAY
-            - INTERVAL 1 MONTH
-        )) YEAR
-    ),
-'%Y-%m-%d') AS remind_date
+ {$remindExpr} AS remind_date,
+                        (
+                          SELECT COUNT(*)
+                          FROM ltl_reminders lr
+                          WHERE lr.lease_id = l.lease_id
+                            AND lr.reminders_type = 'Annexure 09'
+                            AND lr.status = 1
+                            AND lr.sent_date BETWEEN DATE_SUB({$remindExpr}, INTERVAL 45 DAY)
+                                AND STR_TO_DATE(CONCAT(YEAR({$remindExpr}), '-12-31'), '%Y-%m-%d')
+                        ) AS annexure09_sent
                         
                       FROM beneficiaries b
                       LEFT JOIN ltl_land_registration lr ON lr.ben_id = b.ben_id
@@ -241,6 +252,8 @@ $count = 1;
 
             foreach ($rows as $r):
               $out = compute_outstanding($con, $r['lease_id'] ?? null);
+              $reminderSent = !empty($r['annexure09_sent']);
+              $reminderClass = $reminderSent ? ' class="bg-success text-white"' : '';
             ?>
                         <tr>
                             <td><?= $count ?></td>
@@ -266,7 +279,7 @@ $count = 1;
                                 <span class="badge badge-pill badge-danger">Pending</span>
                                 <?php endif; ?>
                             </td>
-                            <td align='center'>
+                            <td align='center'<?= $reminderClass ?>>
                                 <?php if (!empty($r['remind_date'])): ?>
                                 <?= htmlspecialchars($r['remind_date']) ?>
                                 <?php else: ?>

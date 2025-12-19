@@ -204,7 +204,7 @@ if ($md5 !== ''){
                 </div>
                 <div class="col-md-3">
                     <div class="form-group">
-                        <label>Letter Date (Valuation) *</label>
+                        <label>Letter Date *</label>
                         <input type="date" class="form-control" id="ltl_valuation_date" name="valuation_date" value="<?php
                 if ($existing_lease && !empty($existing_lease['valuation_date'])) {
                   echo htmlspecialchars(date('Y-m-d', strtotime($existing_lease['valuation_date'])));
