@@ -5,6 +5,17 @@
     return v === undefined || v === null || v === "" ? 0 : parseFloat(v);
   }
 
+  function toggleLastLeaseInput() {
+    var cb = document.getElementById("ltl_first_lease");
+    var wrap = document.getElementById("ltl_last_lease_group");
+    var input = document.getElementById("ltl_last_lease_annual_value");
+    var isFirst = !cb || cb.checked;
+    if (wrap) wrap.style.display = isFirst ? "none" : "";
+    if (isFirst && input) {
+      input.value = "";
+    }
+  }
+
   function calculateInitialRent() {
     var valuation = parseFloatSafe(
       document.getElementById("ltl_valuation_amount").value
@@ -383,6 +394,11 @@
       endInput.addEventListener("change", function () {
         calculateEndDate();
       });
+    }
+    var firstLeaseEl = document.getElementById("ltl_first_lease");
+    if (firstLeaseEl) {
+      firstLeaseEl.addEventListener("change", toggleLastLeaseInput);
+      toggleLastLeaseInput();
     }
 
     function onLeaseTypeChangeNative(ev) {

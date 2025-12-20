@@ -4,7 +4,7 @@ require_once dirname(__DIR__, 2) . '/auth.php';
 $md5 = isset($_GET['id']) ? $_GET['id'] : '';
 $client_prefix = isset($_GET['prefix']) ? $_GET['prefix'] : '';
 $ben = null; $land = null; $error = '';
-$existing_lease = null; $has_payments = 0;
+$existing_lease = null; $has_payments = 0; $has_active_changes = 0;
 if ($md5 !== ''){
   if ($stmt = mysqli_prepare($con, 'SELECT ben_id, name FROM beneficiaries WHERE md5_ben_id=? LIMIT 1')){
     mysqli_stmt_bind_param($stmt, 's', $md5);
@@ -69,6 +69,8 @@ if ($md5 !== ''){
 } else {
   $error = 'Missing id';
 }
+$is_first_lease = isset($existing_lease['first_lease']) ? (int)$existing_lease['first_lease'] : 1;
+$last_lease_annual_value = isset($existing_lease['last_lease_annual_value']) ? (float)$existing_lease['last_lease_annual_value'] : 0.0;
 ?>
 <div class="card">
     <div class="card-header">
@@ -340,6 +342,30 @@ if ($md5 !== ''){
                   echo '';
                 }
               ?>" <?php echo $existing_lease ? 'readonly ' : ''; ?> />
+                    </div>
+                </div>
+            </div>
+            <hr />
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-group d-flex align-items-center h-100">
+                        <input type="hidden" name="first_lease" value="0" />
+                        <div class="form-check mb-0 w-100 text-center">
+                            <input class="form-check-input" type="checkbox" id="ltl_first_lease" name="first_lease"
+                                value="1" <?php echo $is_first_lease ? 'checked' : ''; ?>
+                                <?php echo $existing_lease ? 'disabled ' : ''; ?>>
+                            <label class="form-check-label" for="ltl_first_lease">Is it first lease</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3" id="ltl_last_lease_group"
+                    style="<?php echo $is_first_lease ? 'display:none;' : ''; ?>">
+                    <div class="form-group">
+                        <label>Annual lease of last lease period (old lease)</label>
+                        <input type="number" step="0.01" class="form-control" id="ltl_last_lease_annual_value"
+                            name="last_lease_annual_value"
+                            value="<?php echo htmlspecialchars(number_format($last_lease_annual_value, 2, '.', '')); ?>"
+                            <?php echo $existing_lease ? 'readonly ' : ''; ?> />
                     </div>
                 </div>
             </div>

@@ -111,8 +111,14 @@ function collectLeaseInput(mysqli $con, string $mode): array {
         'type_of_project'     => isset($_POST['type_of_project']) ? trim($_POST['type_of_project']) : '',
         'name_of_the_project' => isset($_POST['name_of_the_project']) ? trim($_POST['name_of_the_project']) : '',
         'lease_number'        => trim($_POST['lease_number'] ?? ''),
-        'file_number'         => trim($_POST['file_number'] ?? '')
+        'file_number'         => trim($_POST['file_number'] ?? ''),
+        'first_lease'         => isset($_POST['first_lease']) ? (int)$_POST['first_lease'] : 1,
+        'last_lease_annual_value' => isset($_POST['last_lease_annual_value']) ? floatval($_POST['last_lease_annual_value']) : 0.0,
     ];
+
+    if (!empty($input['first_lease'])) {
+        $input['last_lease_annual_value'] = 0.0;
+    }
 
     if ($mode === 'create') {
         if ($input['land_id'] <= 0 || $input['beneficiary_id'] <= 0) {
@@ -202,9 +208,9 @@ function createLease(mysqli $con, int $locationId, array $input, float $premium)
                 valuation_amount, valuation_date, value_date, approved_date,
                 premium, annual_rent_percentage, revision_period, revision_percentage,
                 start_date, end_date, duration_years, lease_type_id, type_of_project,
-                name_of_the_project, created_by, status, created_on
+                name_of_the_project, first_lease, last_lease_annual_value, created_by, status, created_on
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW()
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW()
             )";
 
     $stmt = mysqli_prepare($con, $sql);
@@ -215,7 +221,7 @@ function createLease(mysqli $con, int $locationId, array $input, float $premium)
     $uid = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
     mysqli_stmt_bind_param(
         $stmt,
-        'iiissdsssddidssiissi',
+        'iiissdsssddidssiissiidi',
         $input['land_id'],
         $input['beneficiary_id'],
         $locationId,
@@ -235,6 +241,8 @@ function createLease(mysqli $con, int $locationId, array $input, float $premium)
         $input['lease_type_id'],
         $input['type_of_project'],
         $input['name_of_the_project'],
+        $input['first_lease'],
+        $input['last_lease_annual_value'],
         $uid
     );
 
@@ -269,6 +277,8 @@ function updateLease(mysqli $con, int $locationId, array $input, float $premium,
         detectChange('premium',                $oldLease['premium'] ?? '',          $premium, $changes);
         detectChange('lease_number',           $oldLease['lease_number'] ?? '',     $input['lease_number'], $changes);
         detectChange('file_number',            $oldLease['file_number'] ?? '',      $input['file_number'], $changes);
+        detectChange('first_lease',            $oldLease['first_lease'] ?? '',      $input['first_lease'], $changes);
+        detectChange('last_lease_annual_value',$oldLease['last_lease_annual_value'] ?? '', $input['last_lease_annual_value'], $changes);
     }
 
     $skipPenalty = empty($input['valuation_date']) || $input['valuation_date'] === '0000-00-00';
@@ -293,6 +303,8 @@ function updateLease(mysqli $con, int $locationId, array $input, float $premium,
                 end_date=?,
                 duration_years=?,
                 name_of_the_project=?,
+                first_lease=?,
+                last_lease_annual_value=?,
                 updated_by=?,
                 updated_on=NOW()
             WHERE lease_id=?";
@@ -304,7 +316,7 @@ function updateLease(mysqli $con, int $locationId, array $input, float $premium,
 
     mysqli_stmt_bind_param(
         $stmt,
-        'iissdsssddidssisii',
+        'iissdsssddidssisidii',
         $input['beneficiary_id'],
         $locationId,
         $input['lease_number'],
@@ -321,6 +333,8 @@ function updateLease(mysqli $con, int $locationId, array $input, float $premium,
         $input['end_date'],
         $input['duration_years'],
         $input['name_of_the_project'],
+        $input['first_lease'],
+        $input['last_lease_annual_value'],
         $uid,
         $leaseId
     );
@@ -383,7 +397,7 @@ function updateLease(mysqli $con, int $locationId, array $input, float $premium,
 function loadOldLease(mysqli $con, int $leaseId): ?array {
     $sql = "SELECT valuation_amount, valuation_date, value_date, approved_date, start_date,
                    annual_rent_percentage, end_date, revision_period, revision_percentage,
-                   duration_years, premium, lease_number, file_number
+                   duration_years, premium, lease_number, file_number, first_lease, last_lease_annual_value
             FROM leases WHERE lease_id=? LIMIT 1";
 
     if ($stmt = mysqli_prepare($con, $sql)) {
