@@ -39,7 +39,7 @@ try{
   $revision_period = (int)($_POST['revision_period'] ?? 0);
   $initial_annual_rent = $_POST['initial_annual_rent']  ?? 0 ;
   $revision_percentage = floatval($_POST['revision_percentage'] ?? 0);
-  $lease_start_date = $start_date = $_POST['start_date'] ?? '';
+  $start_date = $_POST['start_date'] ?? '';
   $end_date = $_POST['end_date'] ?? '';
   $duration_years = (int)($_POST['duration_years'] ?? 0);
   $lease_type_id = isset($_POST['lease_type_id']) ? (int)$_POST['lease_type_id'] : 0;

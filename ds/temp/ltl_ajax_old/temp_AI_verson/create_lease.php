@@ -24,22 +24,15 @@ try{
   $beneficiary_id = isset($_POST['beneficiary_id']) ? (int)$_POST['beneficiary_id'] : 0;
   if ($land_id<=0 || $beneficiary_id<=0) { throw new Exception('Missing land or beneficiary'); }
 
-  $valuation_amount = floatval($_POST['valuation_amount'] ?? 0);
-  $valuation_date = $_POST['valuation_date'] ?? '';
-  $value_date = $_POST['value_date'] ?? '';
-  $approved_date = $_POST['approved_date'] ?? '';
-  $first_lease = isset($_POST['first_lease']) ? (int)$_POST['first_lease'] : 1;
-  $last_lease_annual_value = isset($_POST['last_lease_annual_value']) ? floatval($_POST['last_lease_annual_value']) : 0.0;
-  if ($first_lease !== 0) {
-    $first_lease = 1;
-    $last_lease_annual_value = 0.0;
-  }
+    $valuation_amount = floatval($_POST['valuation_amount'] ?? 0);
+    $valuation_date = $_POST['valuation_date'] ?? '';
+    $value_date = $_POST['value_date'] ?? '';
+    $approved_date = $_POST['approved_date'] ?? '';
    
   $annual_rent_percentage = floatval($_POST['annual_rent_percentage'] ?? 0);
   $revision_period = (int)($_POST['revision_period'] ?? 0);
-  $initial_annual_rent = $_POST['initial_annual_rent']  ?? 0 ;
   $revision_percentage = floatval($_POST['revision_percentage'] ?? 0);
-  $lease_start_date = $start_date = $_POST['start_date'] ?? '';
+  $start_date = $_POST['start_date'] ?? '';
   $end_date = $_POST['end_date'] ?? '';
   $duration_years = (int)($_POST['duration_years'] ?? 0);
   $lease_type_id = isset($_POST['lease_type_id']) ? (int)$_POST['lease_type_id'] : 0;
@@ -53,7 +46,7 @@ try{
   // Server-side safeguard: derive effective annual % based on valuation vs economy threshold
 
 
-  $effective_pct = $annual_rent_percentage;
+  // $effective_pct = $annual_rent_percentage;
   // if ($lease_type_id > 0) {
   //   $q = "SELECT base_rent_percent, economy_rate, economy_valuvation FROM lease_master WHERE lease_type_id=$lease_type_id LIMIT 1";
   //   if ($rs = mysqli_query($con, $q)) {
@@ -73,7 +66,7 @@ try{
   // $annual_rent_percentage = $effective_pct;
 
 
-  // $initial_annual_rent = $valuation_amount * ($annual_rent_percentage / 100.0);
+  $initial_annual_rent = $valuation_amount * ($annual_rent_percentage / 100.0);
   $premium = 0.0;
   if (!empty($start_date) && strtotime($start_date) < strtotime('2020-01-01')) {
 
@@ -93,15 +86,15 @@ try{
     $premium = $initial_annual_rent * $premium_times;
   }
 
-    $sql = "INSERT INTO leases (land_id, initial_annual_rent,beneficiary_id, location_id, lease_number, file_number, valuation_amount, valuation_date, value_date, approved_date, premium, annual_rent_percentage, revision_period, revision_percentage, start_date, end_date, duration_years, lease_type_id, type_of_project, name_of_the_project, first_lease, last_lease_annual_value, created_by, status, created_on)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())";
+    $sql = "INSERT INTO leases (land_id, beneficiary_id, location_id, lease_number, file_number, valuation_amount, valuation_date, value_date, approved_date, premium, annual_rent_percentage, revision_period, revision_percentage, start_date, end_date, duration_years, lease_type_id, type_of_project, name_of_the_project, created_by, status, created_on)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())";
   if ($stmt = mysqli_prepare($con, $sql)){
     $uid = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : 0;
-      mysqli_stmt_bind_param($stmt, 'idiissdsssddidssiissidi',
-        $land_id,$initial_annual_rent ,$beneficiary_id, $location_id, $lease_number, $file_number,
+      mysqli_stmt_bind_param($stmt, 'iiissdsssddidssiissi',
+        $land_id, $beneficiary_id, $location_id, $lease_number, $file_number,
         $valuation_amount, $valuation_date, $value_date, $approved_date, $premium, $annual_rent_percentage, $revision_period,
         $revision_percentage, $start_date, $end_date, $duration_years, $lease_type_id,
-        $type_of_project, $name_of_the_project, $first_lease, $last_lease_annual_value, $uid
+        $type_of_project, $name_of_the_project, $uid
       );
     if (!mysqli_stmt_execute($stmt)){
       throw new Exception('Error creating lease: ' . mysqli_error($con));

@@ -74,7 +74,7 @@ try{
 
     $annual_rent_percentage = floatval($_POST['annual_rent_percentage'] ?? 0);
     $revision_period        = (int)($_POST['revision_period'] ?? 0);
-    $revision_percentage    = floatval($_POST['revision_percentage'] ?? 0); 
+    $revision_percentage    = floatval($_POST['revision_percentage'] ?? 0);
     $start_date             = $_POST['start_date'] ?? '';
     $end_date               = $_POST['end_date'] ?? '';
     $duration_years         = (int)($_POST['duration_years'] ?? 0);
@@ -331,13 +331,7 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
             $revision_period,
             $revision_percentage,
             $start_date,
-            $duration_years,
-              $first_lease,
-                $valuation_amount,
-                $annual_rent_percentage,
-                $lease_type_id,
-                $last_lease_annual_value
-            
+            $duration_years
         )){
             throw new Exception('Failed to rebuild schedules and reprocess payments.');
         }
@@ -361,12 +355,7 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
                 $revision_period,
                 $revision_percentage,
                 $start_date,
-                $duration_years,
-                $first_lease ,
-                $valuation_amount,
-                $annual_rent_percentage,
-                $lease_type_id,
-                $last_lease_annual_value
+                $duration_years
             )){
                 throw new Exception('Failed to regenerate schedules.');
             }
@@ -455,12 +444,7 @@ function rebuildSchedulesAndReapplyPayments(
     $revision_period,
     $revision_percentage,
     $start_date,
-    $duration_years = 30,
-      $first_lease,
-    $valuation_amount,
-    $annual_rent_percentage,
-    $lease_type_id,
-    $last_lease_annual_value
+    $duration_years = 30
 ){
     // 1) Load all active payments (status = 1) in date order
     $payments = [];
@@ -495,12 +479,7 @@ function rebuildSchedulesAndReapplyPayments(
         $revision_period,
         $revision_percentage,
         $start_date,
-        $duration_years,
-        $first_lease ,
-        $valuation_amount,
-        $annual_rent_percentage,
-        $lease_type_id,
-        $last_lease_annual_value
+        $duration_years
     )){
         return false;
     }
@@ -699,19 +678,8 @@ function rebuildSchedulesAndReapplyPayments(
     $revision_period, 
     $revision_percentage, 
     $start_date, 
-    $duration_years = 30,  /// new change
-    $first_lease,
-    $valuation_amount,
-    $annual_rent_percentage,
-    $lease_type_id,
-    $last_lease_annual_value
-     
+    $duration_years = 30
 ){
-
-                $result = "val_amount-".$valuation_amount."ecoValuvation-".$economy_valuvation."ecoreate-".$economy_rate."rent.".$annual_rent_percentage ;
-
-
-                
     $start_ts = strtotime($start_date);
     if (!$start_ts) return false;
 
@@ -768,53 +736,16 @@ function rebuildSchedulesAndReapplyPayments(
 
 //test temp table 
 
-    $lease_id = (int)$lease_id; // safety cast
+$lease_id = (int)$lease_id; // safety cast
 
-    $sqlDel = "DELETE FROM lease_schedules_temp WHERE lease_id = $lease_id";
-    mysqli_query($con, $sqlDel);
-
-
-            //new change for 2020
-            $first_lease  = $first_lease ;
-            $valuation_amount = $valuation_amount;
-            $start_date = $start_date;
-            $annual_rent_percentage = $annual_rent_percentage;
-            $lease_type_id =$lease_type_id;
-            $sql_master_lease = "
-                SELECT economy_valuvation, economy_rate
-                FROM lease_master
-                WHERE lease_type_id = $lease_type_id
-            ";
-            $result_master_lease = mysqli_query($con, $sql_master_lease);
-            if ($result_master_lease && mysqli_num_rows($result_master_lease) > 0) {
-                $lease_master = mysqli_fetch_assoc($result_master_lease);
-                $economy_rate       = (float)$lease_master['economy_rate'];
-                $economy_valuvation = (float)$lease_master['economy_valuvation'];
-            } else { 
-                $economy_rate = 0;
-                $economy_valuvation = 0;
-            }
-           if($valuation_amount <= $economy_valuvation && $economy_rate < $annual_rent_percentage ) {
-            $economy_rate_applicable = 1; 
-                if($first_lease == 1){
-                    $revised_initital_rent =  $valuation_amount * $economy_rate /100;
-                }  else {
-                    $revised_initital_rent = $last_lease_annual_value;
-                }  
-           } else {
-            $economy_rate_applicable = 0;
-            $revised_initital_rent = 0;
-           } //new change for 2020
-          
-             
-
-
-
+$sqlDel = "DELETE FROM lease_schedules_temp WHERE lease_id = $lease_id";
+mysqli_query($con, $sqlDel);
 
 
 
 
     for ($year = 0; $year < $duration; $year++) {
+
         $year_start_ts = strtotime("+{$year} years", $start_ts);
         $year_end_ts   = strtotime("+1 year -1 day", $year_start_ts);
         $schedule_year   = (int)date('Y', $year_start_ts);
@@ -871,46 +802,31 @@ function rebuildSchedulesAndReapplyPayments(
             ? $premium
             : 0.0;
 
-
-             
-              
-                //new change for 2020
-                if($is_revision_year == 1){
-                $revised_initital_rent = $revised_initital_rent * 1.2;
-                }else{
-                $revised_initital_rent = $revised_initital_rent;
-                }
-
-               if($schedule_year == 2020){
-                $current_rent = $revised_initital_rent;
-               }  //new change for 2020
-
-
         // ------------------------------------
         // UPDATE existing OR INSERT new row
         // ------------------------------------
         if ($year < $existingCount) {
 
-                $schedule_id = $existing[$year]['schedule_id'];
+                // $schedule_id = $existing[$year]['schedule_id'];
 
-                $sqlUp = "UPDATE lease_schedules SET
-                            schedule_year=?, start_date=?, end_date=?, due_date=?,
-                            base_amount=?, premium=?, annual_amount=?,
-                            revision_number=?, is_revision_year=?
-                        WHERE schedule_id=?";
+                // $sqlUp = "UPDATE lease_schedules SET
+                //             schedule_year=?, start_date=?, end_date=?, due_date=?,
+                //             base_amount=?, premium=?, annual_amount=?,
+                //             revision_number=?, is_revision_year=?
+                //         WHERE schedule_id=?";
 
-                $stUp = mysqli_prepare($con, $sqlUp);
-                mysqli_stmt_bind_param(
-                    $stUp, 'isssdddiii',
-                    $schedule_year,
-                    $year_start_date, $year_end_date, $due_date,
-                    $initial_rent, $first_year_premium,
-                    $current_rent,
-                    $revision_number, $is_revision_year,
-                    $schedule_id
-                );
-                mysqli_stmt_execute($stUp);
-                mysqli_stmt_close($stUp);
+                // $stUp = mysqli_prepare($con, $sqlUp);
+                // mysqli_stmt_bind_param(
+                //     $stUp, 'isssdddiii',
+                //     $schedule_year,
+                //     $year_start_date, $year_end_date, $due_date,
+                //     $initial_rent, $first_year_premium,
+                //     $current_rent,
+                //     $revision_number, $is_revision_year,
+                //     $schedule_id
+                // );
+                // mysqli_stmt_execute($stUp);
+                // mysqli_stmt_close($stUp);
 
         } else {
 
