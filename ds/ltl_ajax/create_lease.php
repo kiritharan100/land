@@ -110,7 +110,12 @@ try{
     mysqli_stmt_close($stmt);
 
     // Generate schedules
-    generateLeaseSchedules($lease_id, $initial_annual_rent, $premium, $revision_period, $revision_percentage, $start_date, $duration_years);
+    generateLeaseSchedules($lease_id, $initial_annual_rent, $premium, $revision_period, $revision_percentage, $start_date, $duration_years
+          ,$first_lease,
+          $valuation_amount,
+          $annual_rent_percentage,
+          $lease_type_id,
+          $last_lease_annual_value);
 
     // Initialize penalties using existing script (buffer output)
     // try {
@@ -129,7 +134,7 @@ try{
         // non-fatal
     }
   }
-
+ 
 
 
     if (function_exists('UserLog')) { @UserLog(2, 'LTL Create Lease', 'Created lease: ' . $lease_number.' File No: ' . $file_number,$beneficiary_id); }
@@ -155,7 +160,12 @@ function generateLeaseSchedules(
     $revision_period,
     $revision_percentage,
     $start_date,
-    $duration_years = 30
+    $duration_years = 30,
+    $first_lease,
+    $valuation_amount,
+    $annual_rent_percentage,
+    $lease_type_id,
+    $last_lease_annual_value
 ){
     global $con;
 
@@ -190,6 +200,42 @@ function generateLeaseSchedules(
             ? strtotime("+{$post_period_years} years", $start_ts)
             : null;
     }
+
+
+
+
+       //new change for 2020
+            $first_lease  = $first_lease ;
+            $valuation_amount = $valuation_amount;
+            $start_date = $start_date;
+            $annual_rent_percentage = $annual_rent_percentage;
+            $lease_type_id =$lease_type_id;
+            $sql_master_lease = "
+                SELECT economy_valuvation, economy_rate
+                FROM lease_master
+                WHERE lease_type_id = $lease_type_id
+            ";
+            $result_master_lease = mysqli_query($con, $sql_master_lease);
+            if ($result_master_lease && mysqli_num_rows($result_master_lease) > 0) {
+                $lease_master = mysqli_fetch_assoc($result_master_lease);
+                $economy_rate       = (float)$lease_master['economy_rate'];
+                $economy_valuvation = (float)$lease_master['economy_valuvation'];
+            } else { 
+                $economy_rate = 0;
+                $economy_valuvation = 0;
+            }
+           if($valuation_amount <= $economy_valuvation && $economy_rate < $annual_rent_percentage && $economy_rate > 0) {
+            $economy_rate_applicable = 1; 
+                if($first_lease == 1){
+                    $revised_initital_rent =  $valuation_amount * $economy_rate /100;
+                }  else {
+                    $revised_initital_rent = $last_lease_annual_value;
+                }  
+           } else {
+            $economy_rate_applicable = 0;
+            $revised_initital_rent = 0;
+           } //new change for 2020
+                          //  $resultxx = "val_amount-".$valuation_amount."ecoValuvation-".$economy_valuvation."ecoreate-".$economy_rate."rent.".$annual_rent_percentage ;
 
     // --------------------------------------------
     // LOOP THROUGH EACH YEAR
@@ -252,6 +298,20 @@ function generateLeaseSchedules(
             ? $premium
             : 0.0;
 
+
+                  //new change for 2020
+                if($economy_rate_applicable > 0){
+                    if($is_revision_year == 1){
+                        $revised_initital_rent = $revised_initital_rent * 1.2;
+                        }else{
+                        $revised_initital_rent = $revised_initital_rent;
+                        }
+
+                    if($schedule_year == 2020){
+                        $current_rent = $revised_initital_rent;
+                    } 
+                }
+               //new change for 2020
         // --------------------------------------------
         // INSERT SCHEDULE ROW
         // --------------------------------------------
