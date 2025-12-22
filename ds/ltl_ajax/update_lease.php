@@ -383,8 +383,11 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
             $note = ' Schedules regenerated (no payments exist).';
 
         } else {
-            // Payments exist + no key field change → DO NOTHING
-            $note = ' Payments exist. Schedules NOT regenerated.';
+            // Payments exist + no key field change → reapply allocations on existing schedules
+            if (!reapplyPaymentsOnExistingSchedules($con, $lease_id)) {
+                throw new Exception('Failed to reapply payments on existing schedules.');
+            }
+            $note = ' Payments exist. Allocations rebuilt on existing schedules.';
         }
     }
 
@@ -456,7 +459,7 @@ function rebuildSchedulesAndReapplyPayments(
     $revision_percentage,
     $start_date,
     $duration_years = 30,
-      $first_lease,
+    $first_lease,
     $valuation_amount,
     $annual_rent_percentage,
     $lease_type_id,
@@ -478,6 +481,8 @@ function rebuildSchedulesAndReapplyPayments(
         }
         mysqli_stmt_close($st);
     }
+
+    $con->begin_transaction();
 
     // 2) Delete existing schedules for this lease
     if ($stDel = mysqli_prepare($con, 'DELETE FROM lease_schedules WHERE lease_id=?')){
@@ -502,6 +507,7 @@ function rebuildSchedulesAndReapplyPayments(
         $lease_type_id,
         $last_lease_annual_value
     )){
+        $con->rollback();
         return false;
     }
 
@@ -518,6 +524,33 @@ function rebuildSchedulesAndReapplyPayments(
     $discountRate = fetchLeaseDiscountRate($con, null, $lease_id);
     $scheduleState = loadLeaseSchedulesForPayment($con, $lease_id);
 
+    // Reset payment summaries and delete existing details for this lease
+    if ($stResetPay = mysqli_prepare($con, "UPDATE lease_payments SET schedule_id=NULL, rent_paid=0, panalty_paid=0, premium_paid=0, discount_apply=0, current_year_payment=0 WHERE lease_id=? AND status=1")) {
+        mysqli_stmt_bind_param($stResetPay, 'i', $lease_id);
+        if (!mysqli_stmt_execute($stResetPay)) {
+            mysqli_stmt_close($stResetPay);
+            $con->rollback();
+            return false;
+        }
+        mysqli_stmt_close($stResetPay);
+    } else {
+        $con->rollback();
+        return false;
+    }
+
+    if ($stDelDetailAll = mysqli_prepare($con, "DELETE FROM lease_payments_detail WHERE payment_id IN (SELECT payment_id FROM lease_payments WHERE lease_id=? )")) {
+        mysqli_stmt_bind_param($stDelDetailAll, 'i', $lease_id);
+        if (!mysqli_stmt_execute($stDelDetailAll)) {
+            mysqli_stmt_close($stDelDetailAll);
+            $con->rollback();
+            return false;
+        }
+        mysqli_stmt_close($stDelDetailAll);
+    } else {
+        $con->rollback();
+        return false;
+    }
+
     $updatePaymentSql = "UPDATE lease_payments SET 
             schedule_id=?,
             rent_paid=?,
@@ -529,6 +562,7 @@ function rebuildSchedulesAndReapplyPayments(
          WHERE payment_id=?";
     $updatePaymentStmt = $con->prepare($updatePaymentSql);
     if (!$updatePaymentStmt) {
+        $con->rollback();
         return false;
     }
 
@@ -542,6 +576,7 @@ function rebuildSchedulesAndReapplyPayments(
     $updateScheduleStmt = $con->prepare($updateScheduleSql);
     if (!$updateScheduleStmt) {
         $updatePaymentStmt->close();
+        $con->rollback();
         return false;
     }
 
@@ -553,14 +588,7 @@ function rebuildSchedulesAndReapplyPayments(
     if (!$insertDetailStmt) {
         $updateScheduleStmt->close();
         $updatePaymentStmt->close();
-        return false;
-    }
-
-    $deleteDetailStmt = $con->prepare("DELETE FROM lease_payments_detail WHERE payment_id = ?");
-    if (!$deleteDetailStmt) {
-        $insertDetailStmt->close();
-        $updateScheduleStmt->close();
-        $updatePaymentStmt->close();
+        $con->rollback();
         return false;
     }
 
@@ -580,10 +608,10 @@ function rebuildSchedulesAndReapplyPayments(
         $remainingAfter = $allocation['remaining'];
 
         if ($remainingAfter > 0.01) {
-            $deleteDetailStmt->close();
             $insertDetailStmt->close();
             $updateScheduleStmt->close();
             $updatePaymentStmt->close();
+            $con->rollback();
             return false;
         }
 
@@ -594,10 +622,10 @@ function rebuildSchedulesAndReapplyPayments(
 
         $totalActual = $totals['rent'] + $totals['penalty'] + $totals['premium'];
         if (abs($totalActual - $amount) > 0.01) {
-            $deleteDetailStmt->close();
             $insertDetailStmt->close();
             $updateScheduleStmt->close();
             $updatePaymentStmt->close();
+            $con->rollback();
             return false;
         }
 
@@ -620,15 +648,12 @@ function rebuildSchedulesAndReapplyPayments(
             $paymentId
         );
         if (!$updatePaymentStmt->execute()) {
-            $deleteDetailStmt->close();
             $insertDetailStmt->close();
             $updateScheduleStmt->close();
             $updatePaymentStmt->close();
+            $con->rollback();
             return false;
         }
-
-        $deleteDetailStmt->bind_param('i', $paymentId);
-        $deleteDetailStmt->execute();
 
         foreach ($allocations as $sid => $alloc) {
             $scheduleId = intval($sid);
@@ -649,10 +674,238 @@ function rebuildSchedulesAndReapplyPayments(
                 $scheduleId
             );
             if (!$updateScheduleStmt->execute()) {
+                $insertDetailStmt->close();
+                $updateScheduleStmt->close();
+                $updatePaymentStmt->close();
+                $con->rollback();
+                return false;
+            }
+
+            $hasDetail = ($rentInc > 0) || ($penInc > 0) || ($premInc > 0) || ($discInc > 0);
+            if ($hasDetail) {
+                $status = 1;
+                $insertDetailStmt->bind_param(
+                    'iidddddi',
+                    $paymentId,
+                    $scheduleId,
+                    $rentInc,
+                    $penInc,
+                    $premInc,
+                    $discInc,
+                    $curYearInc,
+                    $status
+                );
+                if (!$insertDetailStmt->execute()) {
+                    $insertDetailStmt->close();
+                    $updateScheduleStmt->close();
+                    $updatePaymentStmt->close();
+                    $con->rollback();
+                    return false;
+                }
+            }
+        }
+
+        $scheduleState = $allocation['schedules'];
+    }
+
+    $insertDetailStmt->close();
+    $updateScheduleStmt->close();
+    $updatePaymentStmt->close();
+
+    $con->commit();
+
+    return true;
+}
+
+/**
+ * Reapply all ACTIVE payments on existing schedules (no regeneration).
+ * Resets schedule totals and replays payments in chronological order.
+ */
+function reapplyPaymentsOnExistingSchedules(mysqli $con, int $lease_id): bool
+{
+    // Load active payments in order
+    $payments = [];
+    if ($st = mysqli_prepare(
+        $con,
+        "SELECT * FROM lease_payments 
+         WHERE lease_id=? AND status=1 
+         ORDER BY payment_date ASC, payment_id ASC"
+    )){
+        mysqli_stmt_bind_param($st, 'i', $lease_id);
+        mysqli_stmt_execute($st);
+        $rs = mysqli_stmt_get_result($st);
+        while ($row = mysqli_fetch_assoc($rs)) {
+            $payments[] = $row;
+        }
+        mysqli_stmt_close($st);
+    }
+
+    if (empty($payments)) {
+        return true;
+    }
+
+    $con->begin_transaction();
+
+    // Reset paid/discount totals on schedules before replay
+    if ($stReset = mysqli_prepare($con, "UPDATE lease_schedules SET paid_rent=0, panalty_paid=0, premium_paid=0, total_paid=0, discount_apply=0 WHERE lease_id=?")) {
+        mysqli_stmt_bind_param($stReset, 'i', $lease_id);
+        if (!mysqli_stmt_execute($stReset)) {
+            $con->rollback();
+            mysqli_stmt_close($stReset);
+            return false;
+        }
+        mysqli_stmt_close($stReset);
+    } else {
+        $con->rollback();
+        return false;
+    }
+
+    $discountRate  = fetchLeaseDiscountRate($con, null, $lease_id);
+    $scheduleState = loadLeaseSchedulesForPayment($con, $lease_id);
+
+    $updatePaymentSql = "UPDATE lease_payments SET 
+            schedule_id=?,
+            rent_paid=?,
+            panalty_paid=?,
+            premium_paid=?,
+            discount_apply=?,
+            current_year_payment=?,
+            payment_type=?
+         WHERE payment_id=?";
+    $updatePaymentStmt = $con->prepare($updatePaymentSql);
+    if (!$updatePaymentStmt) {
+        $con->rollback();
+        return false;
+    }
+
+    $updateScheduleSql = "UPDATE lease_schedules SET 
+            paid_rent = paid_rent + ?,
+            panalty_paid = panalty_paid + ?,
+            premium_paid = premium_paid + ?,
+            total_paid = total_paid + ?,
+            discount_apply = discount_apply + ?
+         WHERE schedule_id = ?";
+    $updateScheduleStmt = $con->prepare($updateScheduleSql);
+    if (!$updateScheduleStmt) {
+        $updatePaymentStmt->close();
+        $con->rollback();
+        return false;
+    }
+
+    $insertDetailSql = "INSERT INTO lease_payments_detail (
+            payment_id, schedule_id, rent_paid, penalty_paid, premium_paid,
+            discount_apply, current_year_payment, status
+        ) VALUES (?,?,?,?,?,?,?,?)";
+    $insertDetailStmt = $con->prepare($insertDetailSql);
+    if (!$insertDetailStmt) {
+        $updateScheduleStmt->close();
+        $updatePaymentStmt->close();
+        $con->rollback();
+        return false;
+    }
+
+    $deleteDetailStmt = $con->prepare("DELETE FROM lease_payments_detail WHERE payment_id = ?");
+    if (!$deleteDetailStmt) {
+        $insertDetailStmt->close();
+        $updateScheduleStmt->close();
+        $updatePaymentStmt->close();
+        $con->rollback();
+        return false;
+    }
+
+    foreach ($payments as $pay) {
+        $paymentId   = intval($pay['payment_id']);
+        $amount      = floatval($pay['amount'] ?? 0);
+        $paymentDate = $pay['payment_date'];
+
+        if ($amount <= 0) {
+            continue;
+        }
+
+        $allocation        = allocateLeasePayment($scheduleState, $paymentDate, $amount, $discountRate);
+        $allocations       = $allocation['allocations'];
+        $totals            = $allocation['totals'];
+        $currentScheduleId = $allocation['current_schedule_id'];
+        $remainingAfter    = $allocation['remaining'];
+
+        if ($remainingAfter > 0.01) {
+            $deleteDetailStmt->close();
+            $insertDetailStmt->close();
+            $updateScheduleStmt->close();
+            $updatePaymentStmt->close();
+            $con->rollback();
+            return false;
+        }
+
+        if (empty($allocations)) {
+            $scheduleState = $allocation['schedules'];
+            continue;
+        }
+
+        $totalActual = $totals['rent'] + $totals['penalty'] + $totals['premium'];
+        if (abs($totalActual - $amount) > 0.01) {
+            $deleteDetailStmt->close();
+            $insertDetailStmt->close();
+            $updateScheduleStmt->close();
+            $updatePaymentStmt->close();
+            $con->rollback();
+            return false;
+        }
+
+        $paymentType    = 'mixed';
+        $newRent        = $totals['rent'];
+        $newPenalty     = $totals['penalty'];
+        $newPremium     = $totals['premium'];
+        $newDiscount    = $totals['discount'];
+        $newCurrentYear = $totals['current_year_payment'];
+
+        $updatePaymentStmt->bind_param(
+            'idddddsi',
+            $currentScheduleId,
+            $newRent,
+            $newPenalty,
+            $newPremium,
+            $newDiscount,
+            $newCurrentYear,
+            $paymentType,
+            $paymentId
+        );
+        if (!$updatePaymentStmt->execute()) {
+            $deleteDetailStmt->close();
+            $insertDetailStmt->close();
+            $updateScheduleStmt->close();
+            $updatePaymentStmt->close();
+            $con->rollback();
+            return false;
+        }
+
+        $deleteDetailStmt->bind_param('i', $paymentId);
+        $deleteDetailStmt->execute();
+
+        foreach ($allocations as $sid => $alloc) {
+            $scheduleId        = intval($sid);
+            $rentInc           = $alloc['rent'];
+            $penInc            = $alloc['penalty'];
+            $premInc           = $alloc['premium'];
+            $discInc           = $alloc['discount'];
+            $curYearInc        = $alloc['current_year_payment'];
+            $totalPaidSchedule = $alloc['total_paid'];
+
+            $updateScheduleStmt->bind_param(
+                'dddddi',
+                $rentInc,
+                $penInc,
+                $premInc,
+                $totalPaidSchedule,
+                $discInc,
+                $scheduleId
+            );
+            if (!$updateScheduleStmt->execute()) {
                 $deleteDetailStmt->close();
                 $insertDetailStmt->close();
                 $updateScheduleStmt->close();
                 $updatePaymentStmt->close();
+                $con->rollback();
                 return false;
             }
 
@@ -675,6 +928,7 @@ function rebuildSchedulesAndReapplyPayments(
                     $insertDetailStmt->close();
                     $updateScheduleStmt->close();
                     $updatePaymentStmt->close();
+                    $con->rollback();
                     return false;
                 }
             }
@@ -688,10 +942,12 @@ function rebuildSchedulesAndReapplyPayments(
     $updateScheduleStmt->close();
     $updatePaymentStmt->close();
 
+    $con->commit();
+
     return true;
 }
  
- function generateLeaseSchedules(
+function generateLeaseSchedules(
     $con, 
     $lease_id, 
     $initial_rent, 

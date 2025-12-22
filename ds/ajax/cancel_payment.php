@@ -28,6 +28,25 @@ if ($_POST) {
         if (!$payment) {
             throw new Exception("Payment not found");
         }
+        if (isset($payment['status']) && (int)$payment['status'] === 0) {
+            throw new Exception("Payment is already cancelled");
+        }
+
+        // Allow cancellation only for the most recent active payment on the lease.
+        $latest_sql = "SELECT payment_id 
+                       FROM lease_payments 
+                       WHERE lease_id = ? AND status = 1 
+                       ORDER BY payment_date DESC, payment_id DESC 
+                       LIMIT 1";
+        $stmt_latest = $con->prepare($latest_sql);
+        $stmt_latest->bind_param("i", $payment['lease_id']);
+        $stmt_latest->execute();
+        $latest_row = $stmt_latest->get_result()->fetch_assoc();
+        $stmt_latest->close();
+
+        if (!$latest_row || (int)$latest_row['payment_id'] !== $payment_id) {
+            throw new Exception("Only the latest active payment can be cancelled.");
+        }
 
         
         // Start transaction

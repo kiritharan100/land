@@ -132,18 +132,11 @@ function allocateLeasePayment(array $schedules, string $paymentDate, float $amou
     ];
 
     foreach ($updatedSchedules as &$schedule) {
-        // $schedule['pen_out'] = max(0.0, $schedule['panalty'] - $schedule['panalty_paid']);
-        $dueTs   = $schedule['start_ts']; // or due_date if you have
-        $endTs   = $schedule['end_date'] ? strtotime($schedule['end_date']) : null;
-
-        $penaltyAllowed =
-            ($paymentTs > $dueTs) &&
-            ($endTs !== null && $paymentTs <= $endTs);
-
+        $dueTs = $schedule['start_ts']; // Use start date as due date proxy
+        $penaltyAllowed = ($dueTs !== null) && ($paymentTs > $dueTs);
         $schedule['pen_out'] = $penaltyAllowed
             ? max(0.0, $schedule['panalty'] - $schedule['panalty_paid'])
             : 0.0;
-
 
         $schedule['prem_out'] = max(0.0, $schedule['premium'] - $schedule['premium_paid']);
         $schedule['rent_out'] = max(0.0, $schedule['annual_amount'] - $schedule['paid_rent'] - $schedule['discount_apply']);
@@ -153,44 +146,72 @@ function allocateLeasePayment(array $schedules, string $paymentDate, float $amou
     }
     unset($schedule);
 
+    // Phase 1: clear penalties across all schedules (global priority)
+    foreach ($updatedSchedules as &$schedule) {
+        if ($remaining <= PAYMENT_EPSILON || $schedule['pen_out'] <= PAYMENT_EPSILON) {
+            continue;
+        }
+        $sid = $schedule['schedule_id'];
+        if (!isset($allocations[$sid])) {
+            $allocations[$sid] = [
+                'rent' => 0.0, 'penalty' => 0.0, 'premium' => 0.0,
+                'discount' => 0.0, 'current_year_payment' => 0.0, 'total_paid' => 0.0,
+            ];
+        }
+        $pay = min($remaining, $schedule['pen_out']);
+        $schedule['pen_out'] -= $pay;
+        $schedule['panalty_paid'] += $pay;
+        $allocations[$sid]['penalty'] += $pay;
+        $allocations[$sid]['total_paid'] += $pay;
+        $totals['penalty'] += $pay;
+        $remaining -= $pay;
+    }
+    unset($schedule);
+
+    // Phase 2: clear premiums across all schedules (after penalties)
+    foreach ($updatedSchedules as &$schedule) {
+        if ($remaining <= PAYMENT_EPSILON || $schedule['prem_out'] <= PAYMENT_EPSILON) {
+            continue;
+        }
+        $sid = $schedule['schedule_id'];
+        if (!isset($allocations[$sid])) {
+            $allocations[$sid] = [
+                'rent' => 0.0, 'penalty' => 0.0, 'premium' => 0.0,
+                'discount' => 0.0, 'current_year_payment' => 0.0, 'total_paid' => 0.0,
+            ];
+        }
+        $pay = min($remaining, $schedule['prem_out']);
+        $schedule['prem_out'] -= $pay;
+        $schedule['premium_paid'] += $pay;
+        $allocations[$sid]['premium'] += $pay;
+        $allocations[$sid]['total_paid'] += $pay;
+        $totals['premium'] += $pay;
+        $remaining -= $pay;
+    }
+    unset($schedule);
+
+    // Phase 3: settle rent (with discount rules), only after penalty/premium are cleared
     $priorOutstanding = 0.0;
     foreach ($updatedSchedules as &$schedule) {
         if ($remaining <= PAYMENT_EPSILON) {
             $priorOutstanding += $schedule['pen_out'] + $schedule['prem_out'] + $schedule['rent_out'];
             continue;
         }
+        // Do not pay rent on a schedule that still has penalty or premium outstanding
+        if ($schedule['pen_out'] > PAYMENT_EPSILON || $schedule['prem_out'] > PAYMENT_EPSILON) {
+            $priorOutstanding += $schedule['pen_out'] + $schedule['prem_out'] + $schedule['rent_out'];
+            continue;
+        }
 
         $sid = $schedule['schedule_id'];
-        $alloc = $allocations[$sid] ?? [
-            'rent' => 0.0,
-            'penalty' => 0.0,
-            'premium' => 0.0,
-            'discount' => 0.0,
-            'current_year_payment' => 0.0,
-            'total_paid' => 0.0,
-        ];
-
+        if (!isset($allocations[$sid])) {
+            $allocations[$sid] = [
+                'rent' => 0.0, 'penalty' => 0.0, 'premium' => 0.0,
+                'discount' => 0.0, 'current_year_payment' => 0.0, 'total_paid' => 0.0,
+            ];
+        }
+        $alloc = $allocations[$sid];
         $noOutstandingBefore = ($priorOutstanding <= PAYMENT_EPSILON);
-
-        if ($schedule['pen_out'] > PAYMENT_EPSILON && $remaining > PAYMENT_EPSILON) {
-            $pay = min($remaining, $schedule['pen_out']);
-            $schedule['pen_out'] -= $pay;
-            $schedule['panalty_paid'] += $pay;
-            $alloc['penalty'] += $pay;
-            $alloc['total_paid'] += $pay;
-            $totals['penalty'] += $pay;
-            $remaining -= $pay;
-        }
-
-        if ($schedule['prem_out'] > PAYMENT_EPSILON && $remaining > PAYMENT_EPSILON) {
-            $pay = min($remaining, $schedule['prem_out']);
-            $schedule['prem_out'] -= $pay;
-            $schedule['premium_paid'] += $pay;
-            $alloc['premium'] += $pay;
-            $alloc['total_paid'] += $pay;
-            $totals['premium'] += $pay;
-            $remaining -= $pay;
-        }
 
         $canApplyDiscount = $discountRate > 0.0
             && $schedule['discount_remaining'] > PAYMENT_EPSILON

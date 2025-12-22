@@ -122,6 +122,14 @@ if ($md5 !== ''){
         if ($rp) { $payments = mysqli_fetch_all($rp, MYSQLI_ASSOC); }
         mysqli_stmt_close($stP);
       }
+      // identify the latest active (non-cancelled) payment to enforce descending cancellations
+      $lastActivePaymentId = null;
+      foreach ($payments as $pRow) {
+        $rowCancelled = isset($pRow['status']) && (string)$pRow['status'] === '0';
+        if (!$rowCancelled) {
+          $lastActivePaymentId = (int)($pRow['payment_id'] ?? $pRow['id'] ?? 0);
+        }
+      }
       ?>
       <style>
         /* Payments table formatting */
@@ -151,7 +159,11 @@ if ($md5 !== ''){
             <?php if (!$payments): ?>
               <tr><td colspan="9" class="text-center">No payments recorded</td></tr>
             <?php else: foreach ($payments as $p): ?>
-              <?php $isCancelled = isset($p['status']) && (string)$p['status'] === '0'; ?>
+              <?php
+                $paymentId = (int)($p['payment_id'] ?? $p['id'] ?? 0);
+                $isCancelled = isset($p['status']) && (string)$p['status'] === '0';
+                $canCancel = !$isCancelled && $paymentId === $lastActivePaymentId;
+              ?>
               <tr class="<?= $isCancelled ? 'cancelled-payment-row' : '' ?>">
                 <td class="col-date"><?= htmlspecialchars($p['payment_date']) ?></td>
                 <td><?= htmlspecialchars($p['reference_number']) ?></td>
@@ -165,14 +177,16 @@ if ($md5 !== ''){
                   <?php if ($isCancelled): ?>
                     <span class="cancelled-label">Cancelled</span>
                   <?php else: ?>
-                    <?php if (hasPermission(19)): ?>
+                    <?php if (hasPermission(19) && $canCancel): ?>
                     <button type="button" class="btn btn-outline-danger btn-sm ltl-cancel-payment-btn"
-                            data-payment-id="<?= (int)($p['payment_id'] ?? $p['id'] ?? 0) ?>"
+                            data-payment-id="<?= $paymentId ?>"
                             data-receipt="<?= htmlspecialchars($p['receipt_number']) ?>"
                             data-date="<?= htmlspecialchars($p['payment_date']) ?>"
                             data-amount="<?= htmlspecialchars($p['amount']) ?>">
                       <i class="fa fa-times"></i> Cancel
                     </button>
+                    <?php elseif (hasPermission(19)): ?>
+                      <span class="text-muted small">Cancel later payments first</span>
                     <?php endif; ?>
                   <?php endif; ?>
                 </td>

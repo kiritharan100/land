@@ -240,6 +240,16 @@ try {
 
     $con->commit();
 
+    // Recalculate penalties for this lease after payment success (non-blocking).
+    try {
+        $_REQUEST['lease_id'] = $lease_id;
+        ob_start();
+        include __DIR__ . '/../cal_panalty.php';
+        ob_end_clean();
+    } catch (Exception $e) {
+        // Ignore penalty calculation errors to avoid breaking payment flow.
+    }
+
     // Optional SMS notification (format kept identical to original behavior).
     if ($payment_sms === 1 && preg_match('/^[0-9]{10}$/', $telephone)) {
         $tpl_sql  = "SELECT english_sms, tamil_sms, sinhala_sms 
