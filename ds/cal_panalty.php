@@ -111,7 +111,7 @@ echo  $scheduleQuery = "
     GROUP BY  ls.schedule_id
     ORDER BY ls.schedule_year
 ";
-
+ 
 
                     $scheduleResult = mysqli_query($con, $scheduleQuery);
 
