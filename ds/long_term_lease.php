@@ -158,7 +158,7 @@ $remindExpr = "DATE(
                             <th>Remind Date</th>
                             <th class="text-right"> Outstanding</th>
 
-                            <th>Action</th>
+                            <th width='100'>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -279,7 +279,7 @@ $count = 1;
                                 <span class="badge badge-pill badge-danger">Pending</span>
                                 <?php endif; ?>
                             </td>
-                            <td align='center'<?= $reminderClass ?>>
+                            <td align='center' <?= $reminderClass ?>>
                                 <?php if (!empty($r['remind_date'])): ?>
                                 <?= htmlspecialchars($r['remind_date']) ?>
                                 <?php else: ?>

@@ -7,11 +7,9 @@ date_default_timezone_set('Asia/Colombo');
 
 $response = [
   'success' => false,
-  'rent_paid' => 0.0,
-  'penalty_paid' => 0.0,
-  'premium_paid' => 0.0,
-  'discount_apply' => 0.0,
   'location_id' => null,
+  'types' => [],
+  'total' => 0,
   'message' => ''
 ];
 
@@ -23,33 +21,43 @@ try {
   }
   $response['location_id'] = $locParam;
 
-  $sql = "SELECT 
-            COALESCE(SUM(ls.paid_rent),0) AS rent_paid,
-            COALESCE(SUM(ls.panalty_paid),0) AS penalty_paid,
-            COALESCE(SUM(ls.premium_paid),0) AS premium_paid,
-            COALESCE(SUM(ls.discount_apply),0) AS discount_apply
-          FROM lease_schedules ls
-          INNER JOIN leases l ON ls.lease_id = l.lease_id";
-  $types = '';
+  $filters = [];
+  $typesStr = '';
   $params = [];
   if ($locParam !== null) {
-    $sql .= " WHERE l.location_id = ?";
-    $types .= 'i';
+    $filters[] = 'b.location_id = ?';
+    $typesStr .= 'i';
     $params[] = $locParam;
   }
+  $whereSql = $filters ? 'WHERE ' . implode(' AND ', $filters) : '';
+
+  $sql = "SELECT 
+            IFNULL(l.type_of_project, 'Unknown') AS lease_type,
+            COUNT(*) AS total_cnt
+          FROM leases l
+          INNER JOIN (
+            SELECT beneficiary_id, MAX(lease_id) AS max_id
+            FROM leases
+            GROUP BY beneficiary_id
+          ) lm ON lm.max_id = l.lease_id
+          INNER JOIN beneficiaries b ON b.ben_id = l.beneficiary_id
+          $whereSql
+          GROUP BY lease_type
+          ORDER BY lease_type";
 
   if ($stmt = mysqli_prepare($con, $sql)) {
-    if (!empty($params)) {
-      mysqli_stmt_bind_param($stmt, $types, ...$params);
+    if ($typesStr !== '') {
+      mysqli_stmt_bind_param($stmt, $typesStr, ...$params);
     }
     if (mysqli_stmt_execute($stmt)) {
-      mysqli_stmt_bind_result($stmt, $rent_paid, $penalty_paid, $premium_paid, $discount_apply);
-      mysqli_stmt_fetch($stmt);
+      mysqli_stmt_bind_result($stmt, $leaseType, $totalCnt);
+      while (mysqli_stmt_fetch($stmt)) {
+        $name = ($leaseType !== null && $leaseType !== '') ? $leaseType : 'Unknown';
+        $count = (int)$totalCnt;
+        $response['types'][] = ['name' => $name, 'count' => $count];
+        $response['total'] += $count;
+      }
       $response['success'] = true;
-      $response['rent_paid'] = round((float)$rent_paid, 2);
-      $response['penalty_paid'] = round((float)$penalty_paid, 2);
-      $response['premium_paid'] = round((float)$premium_paid, 2);
-      $response['discount_apply'] = round((float)$discount_apply, 2);
       $response['message'] = 'OK';
     } else {
       $response['message'] = 'Execution failed';
