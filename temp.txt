@@ -318,45 +318,105 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
     // ----------------------------------------------------
     // SCHEDULE + PAYMENT HANDLING (NO DUPLICATES)
     // ----------------------------------------------------
-    // Always regenerate schedules with current lease values, then replay payments if any.
-    mysqli_query($con, "DELETE FROM lease_schedules WHERE lease_id=$lease_id");
+   
 
-    if (!generateLeaseSchedules(
-        $con,
-        $lease_id,
-        $initial_annual_rent,
-        $premium,
-        $revision_period,
-        $revision_percentage,
-        $start_date,
-        $duration_years,
-        $first_lease,
-        $valuation_amount,
-        $annual_rent_percentage,
-        $lease_type_id,
-        $last_lease_annual_value
-    )){
-        throw new Exception('Failed to regenerate schedules.');
-    }
+    if ($need_rebuild_and_replay) {
 
-    // Recalculate penalties on the freshly generated schedules so replay uses current penalty balances
-    if (!$skip_penalty) {
-        try {
-            $_REQUEST['lease_id'] = $lease_id;
-            ob_start();
-            include __DIR__ . '/../cal_panalty.php';
-            ob_end_clean();
-        } catch (Exception $e) { }
-    }
-
-    if ($payments_count > 0) {
-        if (!reapplyPaymentsOnExistingSchedules($con, $lease_id)) {
-            throw new Exception('Failed to reapply payments on regenerated schedules.');
+        // Key fields changed → delete schedules + regenerate + replay payments
+        if (!rebuildSchedulesAndReapplyPayments(
+            $con,
+            $lease_id,
+            $initial_annual_rent,
+            $premium,
+            $revision_period,
+            $revision_percentage,
+            $start_date,
+            $duration_years,
+              $first_lease,
+                $valuation_amount,
+                $annual_rent_percentage,
+                $lease_type_id,
+                $last_lease_annual_value
+            
+        )){
+            throw new Exception('Failed to rebuild schedules and reprocess payments.');
         }
-        $note = ' Schedules regenerated and payments reprocessed.';
+ 
+        $note =  ' Schedules regenerated and payments reprocessed (because lease values changed).';
+
     } else {
-        $note = ' Schedules regenerated (no payments exist).';
+
+
+        // Key values NOT changed
+        if ($payments_count === 0) {
+
+            // No payments → safe to fully regenerate schedules
+            mysqli_query($con, "DELETE FROM lease_schedules WHERE lease_id=$lease_id");
+
+            if (!generateLeaseSchedules(
+                $con,
+                $lease_id,
+                $initial_annual_rent,
+                $premium,
+                $revision_period,
+                $revision_percentage,
+                $start_date,
+                $duration_years,
+                $first_lease ,
+                $valuation_amount,
+                $annual_rent_percentage,
+                $lease_type_id,
+                $last_lease_annual_value
+            )){
+                throw new Exception('Failed to regenerate schedules.');
+            }
+
+            if (!$skip_penalty) {
+                try {
+                    $_REQUEST['lease_id'] = $lease_id;
+                    ob_start();
+                    include __DIR__ . '/../cal_panalty.php';
+                    ob_end_clean();
+                } catch (Exception $e) { }
+            }
+
+            $note = ' Schedules regenerated (no payments exist).';
+
+        } else {
+            // Payments exist + no key field change → reapply allocations on existing schedules
+            if (!reapplyPaymentsOnExistingSchedules($con, $lease_id)) {
+                throw new Exception('Failed to reapply payments on existing schedules.');
+            }
+            $note = ' Payments exist. Allocations rebuilt on existing schedules.';
+        }
     }
+
+    // ----------------------------------------------------
+    // Recalculate penalties for this lease (final)
+    // ----------------------------------------------------
+    // try {
+    //     $_REQUEST['lease_id'] = $lease_id;
+    //     ob_start();
+    //     include __DIR__ . '/../cal_panalty.php';
+    //     ob_end_clean();
+    // } catch (Exception $e) {
+    //     // non-fatal
+    // }
+
+
+    // ----------------------------------------------------
+// Run penalty calculation ONLY if valuation_date exists
+// ----------------------------------------------------
+if (!$skip_penalty) {
+    try {
+        $_REQUEST['lease_id'] = $lease_id;
+        ob_start();
+        include __DIR__ . '/../cal_panalty.php';
+        ob_end_clean();
+    } catch (Exception $e) { }
+}
+
+
 
   if (function_exists('UserLog')) {
 
@@ -374,16 +434,6 @@ detectChange("file_number",            $oldLease['file_number'] ?? "",     $file
 
 }
 
-
-    // Final penalty recalculation after schedules + payments are in their latest state
-    if (!$skip_penalty) {
-        try {
-            $_REQUEST['lease_id'] = $lease_id;
-            ob_start();
-            include __DIR__ . '/../cal_panalty.php';
-            ob_end_clean();
-        } catch (Exception $e) { }
-    }
 
     $response['success']  = true;
     $response['lease_id'] = $lease_id;
