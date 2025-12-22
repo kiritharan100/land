@@ -158,7 +158,7 @@ $remindExpr = "DATE(
                             <th>Remind Date</th>
                             <th class="text-right"> Outstanding</th>
 
-                            <th width='100'>Action</th>
+                            <th width='120'>Action</th>
                         </tr>
                     </thead>
                     <tbody>

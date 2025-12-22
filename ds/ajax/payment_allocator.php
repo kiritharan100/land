@@ -48,7 +48,7 @@ function loadLeaseSchedulesForPayment(mysqli $con, int $leaseId): array
                    annual_amount, panalty, panalty_paid, premium, premium_paid,
                    paid_rent, discount_apply
             FROM lease_schedules
-            WHERE lease_id = ?
+            WHERE lease_id = ?  
             ORDER BY start_date ASC, schedule_id ASC";
 
     if (!$stmt = $con->prepare($sql)) {
@@ -132,7 +132,19 @@ function allocateLeasePayment(array $schedules, string $paymentDate, float $amou
     ];
 
     foreach ($updatedSchedules as &$schedule) {
-        $schedule['pen_out'] = max(0.0, $schedule['panalty'] - $schedule['panalty_paid']);
+        // $schedule['pen_out'] = max(0.0, $schedule['panalty'] - $schedule['panalty_paid']);
+        $dueTs   = $schedule['start_ts']; // or due_date if you have
+        $endTs   = $schedule['end_date'] ? strtotime($schedule['end_date']) : null;
+
+        $penaltyAllowed =
+            ($paymentTs > $dueTs) &&
+            ($endTs !== null && $paymentTs <= $endTs);
+
+        $schedule['pen_out'] = $penaltyAllowed
+            ? max(0.0, $schedule['panalty'] - $schedule['panalty_paid'])
+            : 0.0;
+
+
         $schedule['prem_out'] = max(0.0, $schedule['premium'] - $schedule['premium_paid']);
         $schedule['rent_out'] = max(0.0, $schedule['annual_amount'] - $schedule['paid_rent'] - $schedule['discount_apply']);
         $schedule['discount_cap'] = max(0.0, $schedule['annual_amount'] * $discountRate);

@@ -118,7 +118,8 @@ echo  $scheduleQuery = "
                     if (mysqli_num_rows($scheduleResult) > 0) {
 
                         while ($schedule = mysqli_fetch_assoc($scheduleResult)) {
-                            $cumulative_outstanding_last_schedule = $cumulative_outstanding;
+                            // $cumulative_outstanding_last_schedule = $cumulative_outstanding;
+                            $cumulative_outstanding_last_schedule = max(0, $cumulative_outstanding);
                             $cumulative_outstanding += ($schedule['annual_amount'] + $schedule['premium']- $schedule['rent_paid'] - $schedule['premium_paid'] - $schedule['discount_apply']);
                             
                             echo '<tr>';
